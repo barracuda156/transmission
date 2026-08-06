@@ -160,7 +160,7 @@ OptionsDialog::reload ()
   switch (myAdd.type)
     {
       case AddData::FILENAME:
-        myHaveInfo = myMetainfo.parse_torrent_file (myAdd.filename.toStdString ());
+        myHaveInfo = myMetainfo.parse_torrent_file (Utils::toStdUtf8 (myAdd.filename));
         break;
 
       case AddData::METAINFO:
@@ -197,7 +197,7 @@ OptionsDialog::reload ()
           file.wanted = myWanted[i];
           file.size = myMetainfo.file_size (i);
           file.have = 0;
-          file.filename = QString::fromStdString (myMetainfo.file_subpath (i));
+          file.filename = Utils::toQString (myMetainfo.file_subpath (i));
           myFiles.append (file);
         }
     }
@@ -352,7 +352,7 @@ OptionsDialog::onTimeout ()
       return;
     }
 
-  const QString fileSubpath = QString::fromStdString (myMetainfo.file_subpath (myVerifyFileIndex));
+  const QString fileSubpath = Utils::toQString (myMetainfo.file_subpath (myVerifyFileIndex));
 
   if (!myVerifyFilePos && !myVerifyFile.isOpen ())
     {

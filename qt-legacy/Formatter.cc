@@ -15,6 +15,7 @@
 
 #include "Formatter.h"
 #include "Speed.h"
+#include "Utils.h"
 
 namespace Values = libtransmission::Values;
 
@@ -86,7 +87,7 @@ Formatter::memToString (int64_t bytes)
   if (!bytes)
     return tr ("None");
 
-  return QString::fromStdString (Values::Memory (bytes, Values::MemoryUnits::Bytes).to_string ());
+  return Utils::toQString (Values::Memory (bytes, Values::MemoryUnits::Bytes).to_string ());
 }
 
 QString
@@ -98,13 +99,13 @@ Formatter::sizeToString (int64_t bytes)
   if (!bytes)
     return tr ("None");
 
-  return QString::fromStdString (Values::Storage (bytes, Values::StorageUnits::Bytes).to_string ());
+  return Utils::toQString (Values::Storage (bytes, Values::StorageUnits::Bytes).to_string ());
 }
 
 QString
 Formatter::speedToString (const Speed& speed)
 {
-  return QString::fromStdString (Values::Speed (speed.Bps (), Values::SpeedUnits::Byps).to_string ());
+  return Utils::toQString (Values::Speed (speed.Bps (), Values::SpeedUnits::Byps).to_string ());
 }
 
 QString
@@ -126,7 +127,7 @@ Formatter::downloadSpeedToString (const Speed& downloadSpeed)
 QString
 Formatter::percentToString (double x)
 {
-  return QString::fromStdString (tr_strpercent (x));
+  return Utils::toQString (tr_strpercent (x));
 }
 
 QString
@@ -134,7 +135,7 @@ Formatter::ratioToString (double ratio)
 {
   static const std::string_view infinity = "\xE2\x88\x9E";
 
-  return QString::fromStdString (tr_strratio (ratio, tr ("None").toStdString (), infinity));
+  return Utils::toQString (tr_strratio (ratio, Utils::toStdUtf8 (tr ("None")), infinity));
 }
 
 QString
