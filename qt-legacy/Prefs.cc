@@ -9,6 +9,9 @@
 
 #include <cassert>
 #include <cstdlib>
+#include <string>
+#include <string_view>
+#include <utility>
 
 #include <QDateTime>
 #include <QDir>
@@ -61,12 +64,11 @@ Prefs::PrefItem Prefs::myItems[] =
   { SESSION_IS_REMOTE, TR_KEY_remote_session_enabled, QVariant::Bool },
   { SESSION_REMOTE_HOST, TR_KEY_remote_session_host, QVariant::String },
   { SESSION_REMOTE_PORT, TR_KEY_remote_session_port, QVariant::Int },
-  { SESSION_REMOTE_AUTH, TR_KEY_remote_session_requres_authentication, QVariant::Bool },
+  { SESSION_REMOTE_AUTH, TR_KEY_remote_session_requires_authentication, QVariant::Bool },
   { SESSION_REMOTE_USERNAME, TR_KEY_remote_session_username, QVariant::String },
   { SESSION_REMOTE_PASSWORD, TR_KEY_remote_session_password, QVariant::String },
   { COMPLETE_SOUND_COMMAND, TR_KEY_torrent_complete_sound_command, QVariant::String },
   { COMPLETE_SOUND_ENABLED, TR_KEY_torrent_complete_sound_enabled, QVariant::Bool },
-  { USER_HAS_GIVEN_INFORMED_CONSENT, TR_KEY_user_has_given_informed_consent, QVariant::Bool },
 
   /* libtransmission settings */
   { ALT_SPEED_LIMIT_UP, TR_KEY_alt_speed_up, QVariant::Int },
@@ -98,7 +100,7 @@ Prefs::PrefItem Prefs::myItems[] =
   { QUEUE_STALLED_MINUTES, TR_KEY_queue_stalled_minutes, QVariant::Int },
   { SCRIPT_TORRENT_DONE_ENABLED, TR_KEY_script_torrent_done_enabled, QVariant::Bool },
   { SCRIPT_TORRENT_DONE_FILENAME, TR_KEY_script_torrent_done_filename, QVariant::String },
-  { SOCKET_TOS, TR_KEY_peer_socket_tos, QVariant::Int },
+  { SOCKET_DIFFSERV, TR_KEY_peer_socket_diffserv, QVariant::String },
   { START, TR_KEY_start_added_torrents, QVariant::Bool },
   { TRASH_ORIGINAL, TR_KEY_trash_original_torrent_files, QVariant::Bool },
   { PEX_ENABLED, TR_KEY_pex_enabled, QVariant::Bool },
@@ -140,18 +142,17 @@ Prefs::Prefs (const QString& configDir):
   // when the application exits.
   myTemporaryPrefs << FILTER_TEXT;
 
-  tr_variant top;
-  tr_variantInitDict (&top, 0);
-  initDefaults (&top);
-  tr_sessionLoadSettings (&top, myConfigDir.toUtf8 ().constData (), NULL);
+  tr_variant defaults;
+  tr_variantInitDict (&defaults, 0);
+  initDefaults (&defaults);
+  tr_variant top = tr_sessionLoadSettings (myConfigDir.toStdString (), &defaults);
 
   for (int i=0; i<PREFS_COUNT; ++i)
     {
       double d;
       bool boolVal;
       int64_t intVal;
-      const char * str;
-      size_t strLen;
+      std::string_view str;
       tr_variant * b (tr_variantDictFind (&top, myItems[i].key));
 
       switch (myItems[i].type)
@@ -162,18 +163,18 @@ Prefs::Prefs (const QString& configDir):
             break;
 
           case CustomVariantType::SortModeType:
-            if (tr_variantGetStr (b, &str, NULL))
-              myValues[i] = QVariant::fromValue (SortMode (QString::fromUtf8 (str)));
+            if (tr_variantGetStrView (b, &str))
+              myValues[i] = QVariant::fromValue (SortMode (QString::fromUtf8 (str.data (), static_cast<int> (str.size ()))));
             break;
 
           case CustomVariantType::FilterModeType:
-            if (tr_variantGetStr (b, &str, NULL))
-              myValues[i] = QVariant::fromValue (FilterMode (QString::fromUtf8 (str)));
+            if (tr_variantGetStrView (b, &str))
+              myValues[i] = QVariant::fromValue (FilterMode (QString::fromUtf8 (str.data (), static_cast<int> (str.size ()))));
             break;
 
           case QVariant::String:
-            if (tr_variantGetStr (b, &str, &strLen))
-              myValues[i].setValue (QString::fromUtf8 (str, strLen));
+            if (tr_variantGetStrView (b, &str))
+              myValues[i].setValue (QString::fromUtf8 (str.data (), static_cast<int> (str.size ())));
             break;
 
           case QVariant::Bool:
@@ -196,8 +197,6 @@ Prefs::Prefs (const QString& configDir):
             break;
         }
     }
-
-    tr_variantFree (&top);
 }
 
 Prefs::~Prefs ()
@@ -257,16 +256,16 @@ Prefs::~Prefs ()
     }
 
   // update settings.json with our settings
-  tr_variant file_settings;
   const QFile file (QDir(myConfigDir).absoluteFilePath(QLatin1String ("settings.json")));
-  if (!tr_variantFromFile (&file_settings, TR_VARIANT_FMT_JSON, file.fileName().toUtf8().constData(), NULL))
+  const std::string filename = file.fileName().toStdString();
+  auto serde = tr_variant_serde::json();
+  tr_variant file_settings;
+  if (auto parsed = serde.parse_file(filename))
+    file_settings = std::move(*parsed);
+  else
     tr_variantInitDict (&file_settings, PREFS_COUNT);
   tr_variantMergeDicts (&file_settings, &current_settings);
-  tr_variantToFile (&file_settings, TR_VARIANT_FMT_JSON, file.fileName().toUtf8().constData());
-  tr_variantFree (&file_settings);
-
-  // cleanup
-  tr_variantFree (&current_settings);
+  serde.to_file (file_settings, filename);
 }
 
 /**
@@ -282,7 +281,7 @@ Prefs::initDefaults (tr_variant * d)
   tr_variantDictAddBool (d, TR_KEY_inhibit_desktop_hibernation, false);
   tr_variantDictAddBool (d, TR_KEY_prompt_before_exit, true);
   tr_variantDictAddBool (d, TR_KEY_remote_session_enabled, false);
-  tr_variantDictAddBool (d, TR_KEY_remote_session_requres_authentication, false);
+  tr_variantDictAddBool (d, TR_KEY_remote_session_requires_authentication, false);
   tr_variantDictAddBool (d, TR_KEY_show_backup_trackers, false);
   tr_variantDictAddBool (d, TR_KEY_show_extra_peer_details, false),
   tr_variantDictAddBool (d, TR_KEY_show_filterbar, true);
@@ -297,7 +296,6 @@ Prefs::initDefaults (tr_variant * d)
   tr_variantDictAddBool (d, TR_KEY_torrent_complete_notification_enabled, true);
   tr_variantDictAddStr  (d, TR_KEY_torrent_complete_sound_command, "canberra-gtk-play -i complete-download -d 'transmission torrent downloaded'");
   tr_variantDictAddBool (d, TR_KEY_torrent_complete_sound_enabled, true);
-  tr_variantDictAddBool (d, TR_KEY_user_has_given_informed_consent, false);
   tr_variantDictAddBool (d, TR_KEY_watch_dir_enabled, false);
   tr_variantDictAddInt  (d, TR_KEY_blocklist_date, 0);
   tr_variantDictAddInt  (d, TR_KEY_main_window_height, 500);
@@ -308,7 +306,7 @@ Prefs::initDefaults (tr_variant * d)
   tr_variantDictAddStr  (d, TR_KEY_download_dir, tr_getDefaultDownloadDir());
   tr_variantDictAddStr  (d, TR_KEY_filter_mode, "all");
   tr_variantDictAddStr  (d, TR_KEY_main_window_layout_order, "menu,toolbar,filter,list,statusbar");
-  tr_variantDictAddStr  (d, TR_KEY_open_dialog_dir, QDir::home().absolutePath().toUtf8());
+  tr_variantDictAddStr  (d, TR_KEY_open_dialog_dir, QDir::home().absolutePath().toUtf8().constData());
   tr_variantDictAddStr  (d, TR_KEY_remote_session_host, "localhost");
   tr_variantDictAddStr  (d, TR_KEY_remote_session_password, "");
   tr_variantDictAddStr  (d, TR_KEY_remote_session_username, "");

@@ -47,7 +47,6 @@ class Application: public QApplication
     void quitLater ();
 
   private slots:
-    void consentGiven (int result);
     void onSessionSourceChanged ();
     void refreshPref (int key);
     void refreshTorrents ();

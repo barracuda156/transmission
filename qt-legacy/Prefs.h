@@ -15,16 +15,19 @@
 #include <QString>
 #include <QVariant>
 
-#include <libtransmission/quark.h>
+// Qt 4's moc cannot parse the C++20 libtransmission headers; hand it
+// equivalent bare declarations instead.
+#ifndef Q_MOC_RUN
+ #include <libtransmission/quark.h>
+#else
+ using tr_quark = size_t;
+#endif
 
 #include "Filters.h"
 
 class QDateTime;
 
-extern "C"
-{
-  struct tr_variant;
-}
+struct tr_variant;
 
 class Prefs: public QObject
 {
@@ -71,7 +74,6 @@ class Prefs: public QObject
       SESSION_REMOTE_PASSWORD,
       COMPLETE_SOUND_COMMAND,
       COMPLETE_SOUND_ENABLED,
-      USER_HAS_GIVEN_INFORMED_CONSENT,
 
       /* core prefs */
       FIRST_CORE_PREF,
@@ -104,7 +106,7 @@ class Prefs: public QObject
       QUEUE_STALLED_MINUTES,
       SCRIPT_TORRENT_DONE_ENABLED,
       SCRIPT_TORRENT_DONE_FILENAME,
-      SOCKET_TOS,
+      SOCKET_DIFFSERV,
       START,
       TRASH_ORIGINAL,
       PEX_ENABLED,
@@ -137,7 +139,6 @@ class Prefs: public QObject
 
     bool isCore (int key) const { return FIRST_CORE_PREF <= key && key <= LAST_CORE_PREF; }
     bool isClient (int key) const { return !isCore (key); }
-    const char * keyStr (int i) const { return tr_quark_get_string (myItems[i].key,NULL); }
     tr_quark getKey (int i) const { return myItems[i].key; }
     int type (int i) const { return myItems[i].type; }
     const QVariant& variant (int i) const { return myValues[i]; }
