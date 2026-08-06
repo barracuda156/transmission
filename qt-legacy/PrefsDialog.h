@@ -10,6 +10,7 @@
 #ifndef QTR_PREFS_DIALOG_H
 #define QTR_PREFS_DIALOG_H
 
+#include <QEvent>
 #include <QMap>
 #include <QSet>
 
@@ -33,12 +34,16 @@ class PrefsDialog: public BaseDialog
     PrefsDialog (Session&, Prefs&, QWidget * parent = nullptr);
     virtual ~PrefsDialog ();
 
+    // QObject
+    virtual bool eventFilter (QObject * object, QEvent * event);
+
   private:
     typedef QMap<int, QWidget*> key2widget_t;
 
   private:
     bool updateWidgetValue (QWidget * widget, int prefKey);
     void linkWidgetToPref (QWidget * widget, int prefKey);
+    void plainTextEditingFinished (QWidget * widget);
     void updateBlocklistLabel ();
 
     void setPref (int key, const QVariant& v);
