@@ -9,6 +9,8 @@
 
 #include <cassert>
 #include <iostream>
+#include <string>
+#include <string_view>
 
 #include <QApplication>
 #include <QByteArray>
@@ -23,7 +25,8 @@
 #include <QTextStream>
 
 #include <libtransmission/transmission.h>
-#include <libtransmission/utils.h> // tr_free
+#include <libtransmission/quark.h>
+#include <libtransmission/utils.h> // tr_getRatio
 #include <libtransmission/variant.h>
 
 #include "AddData.h"
@@ -67,7 +70,7 @@ namespace
   {
     tr_variantListReserve (list, keys.size ());
     for (const tr_quark key: keys)
-      tr_variantListAddQuark (list, key);
+      tr_variantListAddStrView (list, tr_quark_get_string_view (key));
   }
 }
 
@@ -84,12 +87,12 @@ FileAdded::executed (int64_t tag, const QString& result, tr_variant * arguments)
   if (result == QLatin1String ("success"))
     {
       tr_variant * dup;
-      const char * str;
+      std::string_view str;
       if (tr_variantDictFindDict (arguments, TR_KEY_torrent_duplicate, &dup) &&
-          tr_variantDictFindStr (dup, TR_KEY_name, &str, NULL))
+          tr_variantDictFindStrView (dup, TR_KEY_name, &str))
         {
           const QString myFilename = QFileInfo (myName).fileName ();
-          const QString name = QString::fromUtf8 (str);
+          const QString name = QString::fromUtf8 (str.data (), static_cast<int> (str.size ()));
           QMessageBox::warning (qApp->activeWindow (),
                                 tr ("Add Torrent"),
                                 tr ("<p><b>Unable to add \"%1\".</b></p><p>It is a duplicate of \"%2\" which is already added.</p>").arg (myFilename).arg (name));
@@ -348,18 +351,14 @@ Session::start ()
     }
   else
     {
-      tr_variant settings;
-      tr_variantInitDict (&settings, 0);
-      tr_sessionLoadSettings (&settings, myConfigDir.toUtf8 ().constData (), "qt");
-      mySession = tr_sessionInit (myConfigDir.toUtf8 ().constData (), true, &settings);
-      tr_variantFree (&settings);
+      const std::string configDir = myConfigDir.toStdString ();
+      const tr_variant settings = tr_sessionLoadSettings (configDir);
+      mySession = tr_sessionInit (configDir, true, settings);
 
       myRpc.start (mySession);
 
       tr_ctor * ctor = tr_ctorNew (mySession);
-      int torrentCount;
-      tr_torrent ** torrents = tr_sessionLoadTorrents (mySession, ctor, &torrentCount);
-      tr_free (torrents);
+      tr_sessionLoadTorrents (mySession, ctor);
       tr_ctorFree (ctor);
     }
 
@@ -655,12 +654,12 @@ Session::responseReceived (int64_t tag, const QString& result, tr_variant * args
           int64_t id = 0;
           if (result != QLatin1String ("success"))
             {
-              const char * path = "";
-              const char * name = "";
-              tr_variantDictFindStr (args, TR_KEY_path, &path, 0);
-              tr_variantDictFindStr (args, TR_KEY_name, &name, 0);
+              std::string_view path;
+              std::string_view name;
+              tr_variantDictFindStrView (args, TR_KEY_path, &path);
+              tr_variantDictFindStrView (args, TR_KEY_name, &name);
               const QString title = tr ("Error Renaming Path");
-              const QString text = tr ("<p><b>Unable to rename \"%1\" as \"%2\": %3.</b></p> <p>Please correct the errors and try again.</p>").arg (QString::fromUtf8 (path)).arg (QString::fromUtf8 (name)).arg (result);
+              const QString text = tr ("<p><b>Unable to rename \"%1\" as \"%2\": %3.</b></p> <p>Please correct the errors and try again.</p>").arg (QString::fromUtf8 (path.data (), static_cast<int> (path.size ()))).arg (QString::fromUtf8 (name.data (), static_cast<int> (name.size ()))).arg (result);
               QMessageBox * d = new QMessageBox (QMessageBox::Information, title, text,
                                                  QMessageBox::Close,
                                                  qApp->activeWindow ());
@@ -694,12 +693,12 @@ Session::responseReceived (int64_t tag, const QString& result, tr_variant * args
         {
           tr_variant * torrents;
           tr_variant * child;
-          const char * str;
+          std::string_view str;
           if (args != nullptr
               && tr_variantDictFindList (args, TR_KEY_torrents, &torrents)
               && ( (child = tr_variantListChild (torrents, 0)))
-              && tr_variantDictFindStr (child, TR_KEY_magnetLink, &str, NULL))
-            qApp->clipboard ()->setText (QString::fromUtf8 (str));
+              && tr_variantDictFindStrView (child, TR_KEY_magnetLink, &str))
+            qApp->clipboard ()->setText (QString::fromUtf8 (str.data (), static_cast<int> (str.size ())));
           break;
         }
 
@@ -758,7 +757,7 @@ void
 Session::updateInfo (tr_variant * d)
 {
   int64_t i;
-  const char * str;
+  std::string_view str;
 
   disconnect (&myPrefs, SIGNAL (changed (int)), this, SLOT (updatePref (int)));
 
@@ -771,14 +770,14 @@ Session::updateInfo (tr_variant * d)
 
       if (i == Prefs::ENCRYPTION)
         {
-          const char * val;
-          if (tr_variantGetStr (b, &val, NULL))
+          std::string_view val;
+          if (tr_variantGetStrView (b, &val))
             {
-              if (!qstrcmp (val , "required"))
+              if (val == "required")
                 myPrefs.set (i, 2);
-              else if (!qstrcmp (val , "preferred"))
+              else if (val == "preferred")
                 myPrefs.set (i, 1);
-              else if (!qstrcmp (val , "tolerated"))
+              else if (val == "tolerated")
                 myPrefs.set (i, 0);
             }
           continue;
@@ -811,9 +810,9 @@ Session::updateInfo (tr_variant * d)
           case CustomVariantType::SortModeType:
           case QVariant::String:
             {
-              const char * val;
-              if (tr_variantGetStr (b, &val, NULL))
-                myPrefs.set (i, QString::fromUtf8 (val));
+              std::string_view val;
+              if (tr_variantGetStrView (b, &val))
+                myPrefs.set (i, QString::fromUtf8 (val.data (), static_cast<int> (val.size ())));
               break;
             }
           default:
@@ -843,8 +842,12 @@ Session::updateInfo (tr_variant * d)
   if (tr_variantDictFindInt (d, TR_KEY_blocklist_size, &i) && i!=blocklistSize ())
     setBlocklistSize (i);
 
-  if (tr_variantDictFindStr (d, TR_KEY_version, &str, NULL) && (mySessionVersion != QString::fromUtf8 (str)))
-    mySessionVersion = QString::fromUtf8 (str);
+  if (tr_variantDictFindStrView (d, TR_KEY_version, &str))
+    {
+      const QString version = QString::fromUtf8 (str.data (), static_cast<int> (str.size ()));
+      if (mySessionVersion != version)
+        mySessionVersion = version;
+    }
 
   //std::cerr << "Session::updateInfo end" << std::endl;
   connect (&myPrefs, SIGNAL (changed (int)), this, SLOT (updatePref (int)));

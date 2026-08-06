@@ -15,18 +15,19 @@
 #include <QString>
 #include <QStringList>
 
-#include <libtransmission/transmission.h>
-#include <libtransmission/quark.h>
+// Qt 4's moc cannot parse the C++20 libtransmission headers; hand it
+// equivalent bare declarations instead.
+#ifndef Q_MOC_RUN
+ #include <libtransmission/transmission.h>
+ #include <libtransmission/quark.h>
+#else
+ struct tr_session_stats;
+#endif
 
 #include "RpcClient.h"
 
 class AddData;
 class Prefs;
-
-extern "C"
-{
-  struct tr_variant;
-}
 
 class FileAdded: public QObject
 {
