@@ -58,6 +58,7 @@ set(QT_MINIMUM 5.15)
 option(ENABLE_DAEMON "Build daemon" ON)
 tr_auto_option(ENABLE_GTK "Build GTK client" AUTO)
 tr_auto_option(ENABLE_QT "Build Qt client" AUTO)
+option(ENABLE_QT_LEGACY "Build legacy Qt 4 client (see qt-legacy/)" OFF)
 tr_auto_option(ENABLE_MAC "Build Mac client" AUTO)
 tr_auto_option(REBUILD_WEB "Rebuild the web client's generated assets. Requires Node.js and network access." OFF)
 option(INSTALL_WEB "Install the web client's generated assets." ON)
@@ -470,6 +471,10 @@ if(ENABLE_QT)
     tr_fixup_auto_option(ENABLE_QT QT_FOUND QT_IS_REQUIRED)
 endif()
 
+if(ENABLE_QT_LEGACY AND ENABLE_QT)
+    message(FATAL_ERROR "ENABLE_QT and ENABLE_QT_LEGACY both build ${TR_NAME}-qt; enable only one")
+endif()
+
 if(QT_FOUND)
     add_library(transmission::qt_impl INTERFACE IMPORTED)
 
@@ -821,13 +826,14 @@ add_subdirectory(libtransmission)
 add_subdirectory(libtransmission-app)
 
 set(MAC_PROJECT_DIR macosx)
+set(QT_LEGACY_PROJECT_DIR qt-legacy)
 
 if(ENABLE_GTK AND ENABLE_NLS)
     find_package(Gettext 0.19.7 REQUIRED)
     add_subdirectory(po)
 endif()
 
-foreach(P cli daemon gtk mac qt utils)
+foreach(P cli daemon gtk mac qt qt_legacy utils)
     string(TOUPPER "${P}" P_ID)
     if(ENABLE_${P_ID})
         if(DEFINED ${P_ID}_PROJECT_DIR)
@@ -837,7 +843,7 @@ foreach(P cli daemon gtk mac qt utils)
     endif()
 endforeach()
 
-if(ENABLE_DAEMON OR ENABLE_GTK OR ENABLE_QT)
+if(ENABLE_DAEMON OR ENABLE_GTK OR ENABLE_QT OR ENABLE_QT_LEGACY)
     tr_install_web(${CMAKE_INSTALL_DATAROOTDIR}/${TR_NAME})
 endif()
 
