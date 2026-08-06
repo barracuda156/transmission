@@ -184,7 +184,7 @@ endif()
 # On Apple, produce a double-clickable .app bundle. The .icns must use the
 # pre-10.7 classic raw-pixel icon format for 10.5/10.6 PowerPC compatibility
 # (see the makeicns invocation below).
-set(QT_LEGACY_BUNDLE_NAME "Transmission (Qt4)")
+set(QT_LEGACY_BUNDLE_NAME "Transmission")
 set(QT_LEGACY_APPICON_NAME transmission-qt4)
 
 if(APPLE)
@@ -247,7 +247,15 @@ if(APPLE)
         MACOSX_BUNDLE_GUI_IDENTIFIER org.m0k.transmission-qt4
         OUTPUT_NAME ${QT_LEGACY_BUNDLE_NAME})
 
-    install(TARGETS ${TR_NAME}-qt DESTINATION Applications)
+    install(TARGETS ${TR_NAME}-qt DESTINATION "${TR_BUNDLE_INSTALL_PREFIX}")
+
+    # Also install the bundle's executable as a plain Unix binary, same as
+    # every other client (cli/daemon/gtk) already does on Apple unprompted.
+    # It's the same build output either way, so no NSBundle/CFBundle
+    # resource lookup is affected by launching it from bin/ vs. the bundle.
+    install(PROGRAMS $<TARGET_FILE:${TR_NAME}-qt>
+        DESTINATION ${CMAKE_INSTALL_BINDIR}
+        RENAME ${TR_NAME}-qt)
 else()
     install(TARGETS ${TR_NAME}-qt DESTINATION ${CMAKE_INSTALL_BINDIR})
 

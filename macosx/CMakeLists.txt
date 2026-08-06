@@ -432,17 +432,17 @@ set_target_properties(
 
 install(
     TARGETS ${TR_NAME}-mac
-    DESTINATION Applications)
+    DESTINATION "${TR_BUNDLE_INSTALL_PREFIX}")
 
 install(
     DIRECTORY TransmissionHelp
-    DESTINATION Applications/${MAC_BUNDLE_NAME}.app/Contents/Resources)
-tr_install_web(Applications/${MAC_BUNDLE_NAME}.app/Contents/Resources)
+    DESTINATION "${TR_BUNDLE_INSTALL_PREFIX}/${MAC_BUNDLE_NAME}.app/Contents/Resources")
+tr_install_web("${TR_BUNDLE_INSTALL_PREFIX}/${MAC_BUNDLE_NAME}.app/Contents/Resources")
 
 install(CODE
     "list(APPEND CMAKE_MODULE_PATH \"${PROJECT_SOURCE_DIR}/cmake\")
     include(TrMacros)
     include(GetPrerequisites)
     tr_fixup_bundle_item(
-        \"\$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/Applications/${MAC_BUNDLE_NAME}.app\"
+        \"\$ENV{DESTDIR}${TR_BUNDLE_INSTALL_PREFIX}/${MAC_BUNDLE_NAME}.app\"
         \"Contents/MacOS/${MAC_BUNDLE_NAME}\" \"${CMAKE_CURRENT_SOURCE_DIR}\")")
