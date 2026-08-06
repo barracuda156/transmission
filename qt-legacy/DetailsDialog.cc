@@ -832,6 +832,24 @@ DetailsDialog::refresh ()
     }
   ui.originValueLabel->setText (string);
 
+  // myAddedLabel
+  string = none;
+  if (!torrents.empty ())
+    {
+      const QString date = torrents[0]->dateAdded ().toString ();
+      bool mixed_date = false;
+      for (const Torrent * const t: torrents)
+        mixed_date |= (date != t->dateAdded ().toString ());
+
+      if (mixed_date)
+        string = mixed;
+      else if (date.isEmpty ())
+        string = tr ("N/A");
+      else
+        string = date;
+    }
+  ui.addedValueLabel->setText (string);
+
   // myLocationLabel
   string = none;
   if (!torrents.empty ())
