@@ -87,6 +87,7 @@ Torrent::myProperties[] =
   { FAILED_EVER, TR_KEY_corrupt_ever_camel_APICOMPAT, QVariant::ULongLong, STAT_EXTRA },
   { TRACKERS, TR_KEY_trackers, QVariant::StringList, STAT },
   { HOSTS, TR_KEY_NONE, QVariant::StringList, DERIVED },
+  { LABELS, TR_KEY_labels, QVariant::StringList, STAT },
   { TRACKERSTATS, TR_KEY_tracker_stats_camel_APICOMPAT, CustomVariantType::TrackerStatsList, STAT_EXTRA },
   { MIME_ICON, TR_KEY_NONE, QVariant::Icon, DERIVED },
   { SEED_RATIO_LIMIT, TR_KEY_seed_ratio_limit_camel_APICOMPAT, QVariant::Double, STAT },
@@ -622,6 +623,27 @@ Torrent::update (tr_variant * d)
 
           myValues[TRACKERS].setValue (list);
           myValues[HOSTS].setValue (hosts);
+          changed = true;
+        }
+    }
+
+  tr_variant * labels;
+  if (tr_variantDictFindList (d, TR_KEY_labels, &labels))
+    {
+      std::string_view str;
+      int i = 0;
+      QStringList list;
+      tr_variant * child;
+
+      while ((child = tr_variantListChild (labels, i++)))
+        {
+          if (tr_variantGetStrView (child, &str))
+            list.append (QString::fromUtf8 (str.data (), static_cast<int> (str.size ())));
+        }
+
+      if (myValues[LABELS] != list)
+        {
+          myValues[LABELS].setValue (list);
           changed = true;
         }
     }

@@ -24,6 +24,7 @@
 #include <QList>
 #include <QMap>
 #include <QMessageBox>
+#include <QRegExp>
 #include <QResizeEvent>
 #include <QStringList>
 #include <QStyle>
@@ -235,6 +236,8 @@ DetailsDialog::setIds (const QSet<int>& ids)
   ui.filesView->clear ();
   myIds = ids;
   myTrackerModel->refresh (myModel, myIds);
+  myLabelsBaseline.clear ();
+  ui.labelsTextEdit->clearFocus ();
 
   // listen to the new torrents
   for (const int id: myIds)
@@ -726,6 +729,44 @@ DetailsDialog::refresh ()
     }
   ui.commentBrowser->setEnabled (!isCommentMixed && !string.isEmpty ());
 
+  // myLabelsTextEdit
+  if (!ui.labelsTextEdit->hasFocus ())
+    {
+      if (torrents.empty ())
+        {
+          myLabelsBaseline.clear ();
+          ui.labelsTextEdit->setPlainText (QString ());
+          ui.labelsTextEdit->setEnabled (false);
+        }
+      else
+        {
+          const QStringList baseline = torrents[0]->labels ();
+          bool isLabelsMixed = false;
+          for (const Torrent * const t: torrents)
+            {
+              if (t->labels () != baseline)
+                {
+                  isLabelsMixed = true;
+                  break;
+                }
+            }
+
+          if (isLabelsMixed)
+            {
+              myLabelsBaseline.clear ();
+              ui.labelsTextEdit->setPlainText (QString ());
+              ui.labelsTextEdit->setEnabled (false);
+            }
+          else
+            {
+              myLabelsBaseline = baseline.join (QLatin1String (", "));
+              if (ui.labelsTextEdit->toPlainText () != myLabelsBaseline)
+                ui.labelsTextEdit->setPlainText (myLabelsBaseline);
+              ui.labelsTextEdit->setEnabled (true);
+            }
+        }
+    }
+
   // myOriginLabel
   string = none;
   if (!torrents.empty ())
@@ -954,10 +995,23 @@ DetailsDialog::initInfoTab ()
   const int h = QFontMetrics (ui.commentBrowser->font ()).lineSpacing () * 4;
   ui.commentBrowser->setFixedHeight (h);
 
+  const int lteh = QFontMetrics (ui.labelsTextEdit->font ()).lineSpacing () * 2;
+  ui.labelsTextEdit->setFixedHeight (lteh);
+  ui.labelsTextEdit->installEventFilter (this);
+
   ColumnResizer * cr (new ColumnResizer (this));
   cr->addLayout (ui.activitySectionLayout);
   cr->addLayout (ui.detailsSectionLayout);
   cr->update ();
+}
+
+bool
+DetailsDialog::eventFilter (QObject * object, QEvent * event)
+{
+  if (object == ui.labelsTextEdit && event->type () == QEvent::FocusOut)
+    onLabelsEdited ();
+
+  return BaseDialog::eventFilter (object, event);
 }
 
 /***
@@ -1023,6 +1077,23 @@ DetailsDialog::onIdleLimitChanged ()
   const QString unitsSuffix = tr (" minute(s)", 0, ui.idleSpin->value ());
   if (ui.idleSpin->suffix () != unitsSuffix)
     ui.idleSpin->setSuffix (unitsSuffix);
+}
+
+void
+DetailsDialog::onLabelsEdited ()
+{
+  const QString text = ui.labelsTextEdit->toPlainText ().trimmed ();
+
+  if (text == myLabelsBaseline)
+    return;
+
+  QStringList list = text.split (QRegExp (QLatin1String ("(,|;)\\s*")), QString::SkipEmptyParts);
+  for (QString& label: list)
+    label = label.trimmed ();
+  list.removeAll (QString ());
+
+  mySession.torrentSet (myIds, TR_KEY_labels, list);
+  myLabelsBaseline = text;
 }
 
 void
