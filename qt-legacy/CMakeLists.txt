@@ -18,6 +18,13 @@ if(QT_QTDBUS_FOUND)
     set(ENABLE_QT_LEGACY_DBUS_INTEROP ON)
 endif()
 
+# directory-scoped so that the qt4_* macros pass these paths to moc
+include_directories(
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_BINARY_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR})
+
 set(${PROJECT_NAME}_SOURCES
     AboutDialog.cc
     AddData.cc
@@ -177,13 +184,6 @@ add_executable(${TR_NAME}-qt WIN32
     ${${PROJECT_NAME}_QRC_SOURCES}
     ${CMAKE_CURRENT_BINARY_DIR}/MakeDialog.moc
     ${${PROJECT_NAME}_QM_FILES})
-
-target_include_directories(${TR_NAME}-qt
-    PRIVATE
-        ${CMAKE_SOURCE_DIR}
-        ${CMAKE_BINARY_DIR}
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_CURRENT_BINARY_DIR})
 
 target_link_libraries(${TR_NAME}-qt
     ${TR_NAME}

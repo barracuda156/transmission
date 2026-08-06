@@ -18,6 +18,14 @@
 #include <QTimer>
 #include <QVector>
 
+// Qt 4's moc cannot parse the C++20 libtransmission headers; hand it
+// equivalent bare declarations instead.
+#ifndef Q_MOC_RUN
+ #include <libtransmission/torrent-metainfo.h>
+#else
+ struct tr_torrent_metainfo;
+#endif
+
 #include "AddData.h" // AddData
 #include "BaseDialog.h"
 #include "Torrent.h" // FileList
@@ -27,10 +35,7 @@
 class Prefs;
 class Session;
 
-extern "C"
-{
-  struct tr_variant;
-}
+struct tr_variant;
 
 class OptionsDialog: public BaseDialog
 {
@@ -66,7 +71,7 @@ class OptionsDialog: public BaseDialog
 
     QDir myLocalDestination;
     bool myHaveInfo;
-    tr_info myInfo;
+    tr_torrent_metainfo myMetainfo;
     QPushButton * myVerifyButton;
     QVector<int> myPriorities;
     QVector<bool> myWanted;

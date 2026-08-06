@@ -8,12 +8,14 @@
  */
 
 #include <iostream>
+#include <string>
 
 #include <QDir>
 #include <QFileSystemWatcher>
 #include <QTimer>
 
 #include <libtransmission/transmission.h>
+#include <libtransmission/torrent-metainfo.h>
 
 #include "Prefs.h"
 #include "TorrentModel.h"
@@ -40,25 +42,15 @@ WatchDir::~WatchDir ()
 int
 WatchDir::metainfoTest (const QString& filename) const
 {
-  int ret;
-  tr_info inf;
-  tr_ctor * ctor = tr_ctorNew (0);
+  tr_torrent_metainfo metainfo;
 
-  // parse
-  tr_ctorSetMetainfoFromFile (ctor, filename.toUtf8().constData());
-  const int err = tr_torrentParse( ctor, &inf );
-  if (err)
-    ret = ERROR;
-  else if (myModel.hasTorrent (QString::fromUtf8 (inf.hashString)))
-    ret = DUPLICATE;
-  else
-    ret = OK;
+  if (!metainfo.parse_torrent_file (filename.toStdString ()))
+    return ERROR;
 
-  // cleanup
-  if (!err)
-    tr_metainfoFree (&inf);
-  tr_ctorFree (ctor);
-  return ret;
+  if (myModel.hasTorrent (QString::fromStdString (std::string (metainfo.info_hash_string ()))))
+    return DUPLICATE;
+
+  return OK;
 }
 
 void
