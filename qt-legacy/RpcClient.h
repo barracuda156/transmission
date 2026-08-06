@@ -4,7 +4,6 @@
  * It may be used under the GNU GPL versions 2 or 3
  * or any future license endorsed by Mnemosyne LLC.
  *
- * $Id$
  */
 
 #ifndef QTR_RPC_CLIENT_H
@@ -17,21 +16,23 @@
 #include <QString>
 #include <QUrl>
 
-#include <libtransmission/transmission.h>
-#include <libtransmission/quark.h>
-#include <libtransmission/variant.h>
+// Qt 4's moc cannot parse the C++20 libtransmission headers; hand it
+// equivalent bare declarations instead.
+#ifndef Q_MOC_RUN
+ #include <libtransmission/quark.h>
+ #include <libtransmission/variant.h>
+#else
+ using tr_quark = size_t;
+ struct tr_variant;
+#endif
 
 class QByteArray;
 class QNetworkAccessManager;
 
+struct tr_session;
+
 typedef std::shared_ptr<tr_variant> TrVariantPtr;
 Q_DECLARE_METATYPE (TrVariantPtr)
-
-extern "C"
-{
-  struct evbuffer;
-  struct tr_session;
-}
 
 class RpcClient: public QObject
 {
@@ -65,8 +66,6 @@ class RpcClient: public QObject
   private:
     void sendRequest (TrVariantPtr json);
     QNetworkAccessManager * networkAccessManager ();
-
-    static void localSessionCallback (tr_session * s, tr_variant * response, void * vself);
 
   private slots:
     void onFinished (QNetworkReply * reply);

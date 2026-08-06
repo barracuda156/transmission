@@ -4,10 +4,13 @@
  * It may be used under the GNU GPL versions 2 or 3
  * or any future license endorsed by Mnemosyne LLC.
  *
- * $Id$
  */
 
 #include <iostream>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <utility>
 
 #include <QApplication>
 #include <QHostAddress>
@@ -15,11 +18,8 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 
-#include <event2/buffer.h>
-
 #include <libtransmission/transmission.h>
 #include <libtransmission/rpcimpl.h>
-#include <libtransmission/utils.h> // tr_free
 #include <libtransmission/version.h> // LONG_VERSION_STRING
 
 #include "RpcClient.h"
@@ -30,17 +30,10 @@
 
 namespace
 {
-  void
-  destroyVariant (tr_variant * json)
-  {
-    tr_variantFree (json);
-    tr_free (json);
-  }
-
   TrVariantPtr
   createVariant ()
   {
-    return TrVariantPtr (tr_new0 (tr_variant, 1), &destroyVariant);
+    return std::make_shared<tr_variant> ();
   }
 }
 
@@ -108,7 +101,7 @@ RpcClient::url () const
 void
 RpcClient::exec (tr_quark method, tr_variant * args, int64_t tag)
 {
-  exec (tr_quark_get_string (method, nullptr), args, tag);
+  exec (std::string (tr_quark_get_string_view (method)).c_str (), args, tag);
 }
 
 void
@@ -120,7 +113,7 @@ RpcClient::exec (const char* method, tr_variant * args, int64_t tag)
   if (tag >= 0)
     tr_variantDictAddInt (json.get (), TR_KEY_tag, tag);
   if (args != nullptr)
-    tr_variantDictSteal (json.get (), TR_KEY_arguments, args);
+    *tr_variantDictAdd (json.get (), TR_KEY_arguments) = std::move (*args);
 
   sendRequest (json);
 }
@@ -130,7 +123,16 @@ RpcClient::sendRequest (TrVariantPtr json)
 {
   if (mySession != nullptr)
     {
-      tr_rpc_request_exec_json (mySession, json.get (), localSessionCallback, this);
+      // the response callback is invoked on the libtransmission session
+      // thread; emitting responseReceived hands the response over to the
+      // Qt thread through the queued connection made in the constructor
+      tr_rpc_request_exec (mySession, *json,
+        [this] (tr_session *, tr_variant&& response)
+        {
+          TrVariantPtr resp = createVariant ();
+          *resp = std::move (response);
+          emit responseReceived (resp);
+        });
     }
   else if (!myUrl.isEmpty ())
     {
@@ -142,10 +144,8 @@ RpcClient::sendRequest (TrVariantPtr json)
       if (!mySessionId.isEmpty ())
         request.setRawHeader (TR_RPC_SESSION_ID_HEADER, mySessionId.toUtf8 ());
 
-      size_t rawJsonDataLength;
-      char * rawJsonData = tr_variantToStr (json.get (), TR_VARIANT_FMT_JSON_LEAN, &rawJsonDataLength);
-      QByteArray jsonData (rawJsonData, rawJsonDataLength);
-      tr_free (rawJsonData);
+      const std::string body = tr_variant_serde::json ().compact ().to_string (*json);
+      QByteArray jsonData (body.data (), static_cast<int> (body.size ()));
 
       QNetworkReply * reply = networkAccessManager ()->post (request, jsonData);
       reply->setProperty (REQUEST_DATA_PROPERTY_KEY, QVariant::fromValue (json));
@@ -183,22 +183,6 @@ RpcClient::networkAccessManager ()
 }
 
 void
-RpcClient::localSessionCallback (tr_session * s, tr_variant * response, void * vself)
-{
-  Q_UNUSED (s);
-
-  RpcClient * self = static_cast<RpcClient*> (vself);
-
-  TrVariantPtr json = createVariant ();
-  *json = *response;
-  tr_variantInitBool (response, false);
-
-  // this callback is invoked in the libtransmission thread, so we don't want
-  // to process the response here... let's push it over to the Qt thread.
-  self->responseReceived (json);
-}
-
-void
 RpcClient::onFinished (QNetworkReply * reply)
 {
 #ifdef DEBUG_HTTP
@@ -227,9 +211,14 @@ RpcClient::onFinished (QNetworkReply * reply)
     {
       const QByteArray jsonData = reply->readAll ().trimmed ();
 
-      TrVariantPtr json = createVariant ();
-      if (tr_variantFromJson (json.get (), jsonData.constData (), jsonData.size ()) == 0)
-        parseResponse (json);
+      std::optional<tr_variant> parsed = tr_variant_serde::json ().parse (
+        std::string_view (jsonData.constData (), static_cast<size_t> (jsonData.size ())));
+      if (parsed)
+        {
+          TrVariantPtr json = createVariant ();
+          *json = std::move (*parsed);
+          parseResponse (json);
+        }
 
       emit error (QNetworkReply::NoError);
     }
@@ -244,13 +233,14 @@ RpcClient::parseResponse (TrVariantPtr json)
   if (!tr_variantDictFindInt (json.get (), TR_KEY_tag, &tag))
     tag = -1;
 
-  const char * result;
-  if (!tr_variantDictFindStr (json.get (), TR_KEY_result, &result, nullptr))
-    result = nullptr;
+  std::string_view result;
+  const bool hasResult = tr_variantDictFindStrView (json.get (), TR_KEY_result, &result);
 
   tr_variant * args;
   if (!tr_variantDictFindDict (json.get (), TR_KEY_arguments, &args))
     args = nullptr;
 
-  emit executed (tag, result == nullptr ? QString () : QString::fromUtf8 (result), args);
+  emit executed (tag,
+                 hasResult ? QString::fromUtf8 (result.data (), static_cast<int> (result.size ())) : QString (),
+                 args);
 }
