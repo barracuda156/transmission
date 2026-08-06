@@ -4,14 +4,19 @@
  * It may be used under the GNU GPL versions 2 or 3
  * or any future license endorsed by Mnemosyne LLC.
  *
- * $Id$
  */
 
+#include <string>
+#include <string_view>
+
 #include <libtransmission/transmission.h>
-#include <libtransmission/utils.h> // tr_formatter
+#include <libtransmission/utils.h> // tr_strpercent, tr_strratio
+#include <libtransmission/values.h>
 
 #include "Formatter.h"
 #include "Speed.h"
+
+namespace Values = libtransmission::Values;
 
 /***
 ****  Constants
@@ -19,9 +24,9 @@
 
 namespace
 {
- unsigned int speed_K;
- unsigned int mem_K;
- unsigned int size_K;
+  // the client-side Speed class stores B/s and converts to kB/s with
+  // the same SI base that libtransmission's Values::Speed uses
+  const unsigned int speed_K = 1000;
 }
 
 QString Formatter::unitStrings[3][5];
@@ -29,41 +34,27 @@ QString Formatter::unitStrings[3][5];
 void
 Formatter::initUnits ()
 {
- speed_K = 1000;
- unitStrings[SPEED][B]  = tr ( "B/s");
- unitStrings[SPEED][KB] = tr ("kB/s");
- unitStrings[SPEED][MB] = tr ("MB/s");
- unitStrings[SPEED][GB] = tr ("GB/s");
- unitStrings[SPEED][TB] = tr ("TB/s");
- tr_formatter_speed_init (speed_K,
-                          unitStrings[SPEED][KB].toUtf8().constData(),
-                          unitStrings[SPEED][MB].toUtf8().constData(),
-                          unitStrings[SPEED][GB].toUtf8().constData(),
-                          unitStrings[SPEED][TB].toUtf8().constData());
+  // These tables feed unitStr() consumers such as the preferences and
+  // details dialogs. The number formatting itself is done by
+  // libtransmission's Values classes, whose bases match these labels
+  // (speed and size use 1000, memory uses 1024).
+  unitStrings[SPEED][B]  = tr ( "B/s");
+  unitStrings[SPEED][KB] = tr ("kB/s");
+  unitStrings[SPEED][MB] = tr ("MB/s");
+  unitStrings[SPEED][GB] = tr ("GB/s");
+  unitStrings[SPEED][TB] = tr ("TB/s");
 
-  size_K = 1000;
   unitStrings[SIZE][B]  = tr ( "B");
   unitStrings[SIZE][KB] = tr ("kB");
   unitStrings[SIZE][MB] = tr ("MB");
   unitStrings[SIZE][GB] = tr ("GB");
   unitStrings[SIZE][TB] = tr ("TB");
-  tr_formatter_size_init (size_K,
-                          unitStrings[SIZE][KB].toUtf8().constData(),
-                          unitStrings[SIZE][MB].toUtf8().constData(),
-                          unitStrings[SIZE][GB].toUtf8().constData(),
-                          unitStrings[SIZE][TB].toUtf8().constData());
 
-  mem_K = 1024;
   unitStrings[MEM][B]  = tr (  "B");
   unitStrings[MEM][KB] = tr ("KiB");
   unitStrings[MEM][MB] = tr ("MiB");
   unitStrings[MEM][GB] = tr ("GiB");
   unitStrings[MEM][TB] = tr ("TiB");
-  tr_formatter_mem_init (mem_K,
-                         unitStrings[MEM][KB].toUtf8().constData(),
-                         unitStrings[MEM][MB].toUtf8().constData(),
-                         unitStrings[MEM][GB].toUtf8().constData(),
-                         unitStrings[MEM][TB].toUtf8().constData());
 }
 
 /***
@@ -95,9 +86,7 @@ Formatter::memToString (int64_t bytes)
   if (!bytes)
     return tr ("None");
 
-  char buf[128];
-  tr_formatter_mem_B (buf, bytes, sizeof (buf));
-  return QString::fromUtf8 (buf);
+  return QString::fromStdString (Values::Memory (bytes, Values::MemoryUnits::Bytes).to_string ());
 }
 
 QString
@@ -109,17 +98,13 @@ Formatter::sizeToString (int64_t bytes)
   if (!bytes)
     return tr ("None");
 
-  char buf[128];
-  tr_formatter_size_B (buf, bytes, sizeof (buf));
-  return QString::fromUtf8 (buf);
+  return QString::fromStdString (Values::Storage (bytes, Values::StorageUnits::Bytes).to_string ());
 }
 
 QString
 Formatter::speedToString (const Speed& speed)
 {
-  char buf[128];
-  tr_formatter_speed_KBps (buf, speed.KBps (), sizeof (buf));
-  return QString::fromUtf8 (buf);
+  return QString::fromStdString (Values::Speed (speed.Bps (), Values::SpeedUnits::Byps).to_string ());
 }
 
 QString
@@ -141,15 +126,15 @@ Formatter::downloadSpeedToString (const Speed& downloadSpeed)
 QString
 Formatter::percentToString (double x)
 {
-  char buf[128];
-  return QString::fromUtf8 (tr_strpercent (buf, x, sizeof (buf)));
+  return QString::fromStdString (tr_strpercent (x));
 }
 
 QString
 Formatter::ratioToString (double ratio)
 {
-  char buf[128];
-  return QString::fromUtf8 (tr_strratio (buf, sizeof (buf), ratio, "\xE2\x88\x9E"));
+  static const std::string_view infinity = "\xE2\x88\x9E";
+
+  return QString::fromStdString (tr_strratio (ratio, tr ("None").toStdString (), infinity));
 }
 
 QString

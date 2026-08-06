@@ -273,23 +273,6 @@ Application::Application (int& argc, char ** argv):
   else
     myWindow->openSession ();
 
-  if (!myPrefs->getBool (Prefs::USER_HAS_GIVEN_INFORMED_CONSENT))
-    {
-      QMessageBox * dialog = new QMessageBox (QMessageBox::Information, QString (),
-                                              tr ("<b>Transmission is a file sharing program.</b>"),
-                                              QMessageBox::Ok | QMessageBox::Cancel, myWindow);
-      dialog->setInformativeText (tr ("When you run a torrent, its data will be made available to others by means of upload. "
-                                      "Any content you share is your sole responsibility."));
-      dialog->button (QMessageBox::Ok)->setText (tr ("I &Agree"));
-      dialog->setDefaultButton (QMessageBox::Ok);
-      dialog->setModal (true);
-
-      connect (dialog, SIGNAL (finished (int)), this, SLOT (consentGiven (int)));
-
-      dialog->setAttribute (Qt::WA_DeleteOnClose);
-      dialog->show ();
-    }
-
   for (const QString& filename: filenames)
     addTorrent (filename);
 
@@ -401,15 +384,6 @@ Application::onNewTorrentChanged (int id)
 /***
 ****
 ***/
-
-void
-Application::consentGiven (int result)
-{
-  if (result == QMessageBox::Ok)
-    myPrefs->set<bool> (Prefs::USER_HAS_GIVEN_INFORMED_CONSENT, true);
-  else
-    quit ();
-}
 
 Application::~Application ()
 {
