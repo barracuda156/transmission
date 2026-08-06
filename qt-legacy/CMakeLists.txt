@@ -177,13 +177,25 @@ if(${PROJECT_NAME}_TS_FILES)
     qt4_add_translation(${PROJECT_NAME}_QM_FILES ${${PROJECT_NAME}_TS_FILES})
 endif()
 
+# On Apple, produce a double-clickable .app bundle. The .icns must use the
+# pre-10.7 classic raw-pixel icon format for 10.5/10.6 PowerPC compatibility
+# (see the makeicns invocation below).
+set(QT_LEGACY_BUNDLE_NAME "Transmission (Qt4)")
+set(QT_LEGACY_APPICON_NAME transmission-qt4)
+
+if(APPLE)
+    set(${PROJECT_NAME}_ICNS ${CMAKE_CURRENT_BINARY_DIR}/${QT_LEGACY_APPICON_NAME}.icns)
+endif()
+
 add_executable(${TR_NAME}-qt WIN32
+    MACOSX_BUNDLE
     ${${PROJECT_NAME}_SOURCES}
     ${${PROJECT_NAME}_MOC_SOURCES}
     ${${PROJECT_NAME}_UI_SOURCES}
     ${${PROJECT_NAME}_QRC_SOURCES}
     ${CMAKE_CURRENT_BINARY_DIR}/MakeDialog.moc
-    ${${PROJECT_NAME}_QM_FILES})
+    ${${PROJECT_NAME}_QM_FILES}
+    ${${PROJECT_NAME}_ICNS})
 
 target_link_libraries(${TR_NAME}-qt
     ${TR_NAME}
@@ -198,14 +210,49 @@ target_compile_definitions(${TR_NAME}-qt
         QT_NO_CAST_FROM_ASCII
         $<$<BOOL:${ENABLE_QT_LEGACY_DBUS_INTEROP}>:ENABLE_DBUS_INTEROP>)
 
-install(TARGETS ${TR_NAME}-qt DESTINATION ${CMAKE_INSTALL_BINDIR})
+if(APPLE)
+    # makeicns (Carbon Icon Services, MacPorts port "makeicns") writes the
+    # classic raw-pixel icon family chunks (is32/il32/it32 + masks, ic08/
+    # ic09) that 10.5/10.6's Icon Services can decode; modern iconutil/sips
+    # emit PNG-embedded chunks those releases cannot read at all.
+    find_program(MAKEICNS_EXECUTABLE makeicns REQUIRED)
 
-if(INSTALL_DOC)
-    install(FILES ${TR_NAME}-qt.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
-endif()
+    add_custom_command(
+        OUTPUT ${${PROJECT_NAME}_ICNS}
+        COMMAND ${MAKEICNS_EXECUTABLE}
+            -256 ${CMAKE_CURRENT_SOURCE_DIR}/icons/hicolor/256x256/transmission-qt.png
+            -128 ${CMAKE_CURRENT_SOURCE_DIR}/icons/hicolor/128x128/transmission-qt.png
+            -32 ${CMAKE_CURRENT_SOURCE_DIR}/icons/hicolor/32x32/transmission-qt.png
+            -16 ${CMAKE_CURRENT_SOURCE_DIR}/icons/hicolor/16x16/transmission-qt.png
+            -out ${${PROJECT_NAME}_ICNS}
+        DEPENDS
+            ${CMAKE_CURRENT_SOURCE_DIR}/icons/hicolor/256x256/transmission-qt.png
+            ${CMAKE_CURRENT_SOURCE_DIR}/icons/hicolor/128x128/transmission-qt.png
+            ${CMAKE_CURRENT_SOURCE_DIR}/icons/hicolor/32x32/transmission-qt.png
+            ${CMAKE_CURRENT_SOURCE_DIR}/icons/hicolor/16x16/transmission-qt.png
+        COMMENT "Generating ${QT_LEGACY_APPICON_NAME}.icns (classic format)")
 
-install(FILES transmission-qt.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+    set_source_files_properties(${${PROJECT_NAME}_ICNS} PROPERTIES
+        MACOSX_PACKAGE_LOCATION Resources
+        GENERATED ON)
 
-if(ENABLE_NLS)
-    install(FILES ${${PROJECT_NAME}_QM_FILES} DESTINATION ${CMAKE_INSTALL_DATADIR}/${TR_NAME}/translations)
+    set_target_properties(${TR_NAME}-qt PROPERTIES
+        MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in
+        MACOSX_BUNDLE_BUNDLE_NAME ${QT_LEGACY_BUNDLE_NAME}
+        MACOSX_BUNDLE_GUI_IDENTIFIER org.m0k.transmission-qt4
+        OUTPUT_NAME ${QT_LEGACY_BUNDLE_NAME})
+
+    install(TARGETS ${TR_NAME}-qt DESTINATION Applications)
+else()
+    install(TARGETS ${TR_NAME}-qt DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+    if(INSTALL_DOC)
+        install(FILES ${TR_NAME}-qt.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
+    endif()
+
+    install(FILES transmission-qt.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+
+    if(ENABLE_NLS)
+        install(FILES ${${PROJECT_NAME}_QM_FILES} DESTINATION ${CMAKE_INSTALL_DATADIR}/${TR_NAME}/translations)
+    endif()
 endif()
