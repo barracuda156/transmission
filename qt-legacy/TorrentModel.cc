@@ -148,7 +148,7 @@ TorrentModel::updateTorrents (tr_variant * torrents, bool isCompleteList)
   if  (isCompleteList)
     oldIds = getIds ();
 
-  if (tr_variantIsList (torrents))
+  if (torrents != nullptr && torrents->holds_alternative<tr_variant::Vector> ())
     {
       size_t i (0);
       tr_variant * child;

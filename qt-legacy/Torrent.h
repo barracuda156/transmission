@@ -19,8 +19,14 @@
 #include <QList>
 #include <QVariant>
 
-#include <libtransmission/transmission.h>
-#include <libtransmission/quark.h>
+// Qt 4's moc cannot parse the C++20 libtransmission headers; hand it
+// equivalent bare declarations instead.
+#ifndef Q_MOC_RUN
+ #include <libtransmission/transmission.h>
+ #include <libtransmission/quark.h>
+#else
+ using tr_quark = size_t;
+#endif
 
 #include "CustomVariantType.h"
 #include "Speed.h"
@@ -318,7 +324,7 @@ class Torrent: public QObject
     bool setBool       (int key, bool value);
     bool setIcon       (int key, const QIcon&);
     bool setDouble     (int key, double);
-    bool setString     (int key, const char *);
+    bool setString     (int key, const QString&);
     bool setSize       (int key, qulonglong);
     bool setDateTime   (int key, const QDateTime&);
 

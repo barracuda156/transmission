@@ -7,6 +7,8 @@
  * $Id$
  */
 
+#include <string_view>
+
 #include <QDir>
 
 #include <libtransmission/transmission.h>
@@ -89,16 +91,15 @@ FreeSpaceLabel::onSessionExecuted (int64_t tag, const QString& result, tr_varian
 
   // update the label
   int64_t bytes = -1;
-  if (tr_variantDictFindInt (arguments, TR_KEY_size_bytes, &bytes) && bytes >= 0)
+  if (tr_variantDictFindInt (arguments, TR_KEY_size_bytes_kebab_APICOMPAT, &bytes) && bytes >= 0)
     setText (tr("%1 free").arg(Formatter::sizeToString (bytes)));
   else
     setText (QString ());
 
   // update the tooltip
-  size_t len = 0;
-  const char * path = 0;
-  tr_variantDictFindStr (arguments, TR_KEY_path, &path, &len);
-  str = QString::fromUtf8 (path, len);
+  std::string_view path;
+  tr_variantDictFindStrView (arguments, TR_KEY_path, &path);
+  str = QString::fromUtf8 (path.data (), static_cast<int> (path.size ()));
   setToolTip (QDir::toNativeSeparators (str));
 
   myTimer.start ();
