@@ -103,7 +103,7 @@ AddData::readableName () const
         {
           tr_torrent_metainfo tm;
           if (tm.parse_benc (std::string_view (metainfo.constData(), static_cast<size_t> (metainfo.size()))))
-            ret = QString::fromStdString (tm.name ()); // metainfo is required to be UTF-8
+            ret = Utils::toQString (tm.name ()); // metainfo is required to be UTF-8
           break;
         }
     }

@@ -19,6 +19,7 @@
 
 #include "Prefs.h"
 #include "TorrentModel.h"
+#include "Utils.h"
 #include "WatchDir.h"
 
 /***
@@ -44,10 +45,10 @@ WatchDir::metainfoTest (const QString& filename) const
 {
   tr_torrent_metainfo metainfo;
 
-  if (!metainfo.parse_torrent_file (filename.toStdString ()))
+  if (!metainfo.parse_torrent_file (Utils::toStdUtf8 (filename)))
     return ERROR;
 
-  if (myModel.hasTorrent (QString::fromStdString (std::string (metainfo.info_hash_string ()))))
+  if (myModel.hasTorrent (Utils::toQString (metainfo.info_hash_string ().sv ())))
     return DUPLICATE;
 
   return OK;

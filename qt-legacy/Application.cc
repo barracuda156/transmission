@@ -37,6 +37,7 @@
 #include "Prefs.h"
 #include "Session.h"
 #include "TorrentModel.h"
+#include "Utils.h"
 #include "WatchDir.h"
 
 namespace
@@ -46,14 +47,14 @@ namespace
 
   const tr_option opts[] =
   {
-    { 'g', "config-dir", "Where to look for configuration files", "g", 1, "<path>" },
-    { 'm', "minimized",  "Start minimized in system tray", "m", 0, NULL },
-    { 'p', "port",  "Port to use when connecting to an existing session", "p", 1, "<port>" },
-    { 'r', "remote",  "Connect to an existing session at the specified hostname", "r", 1, "<host>" },
-    { 'u', "username", "Username to use when connecting to an existing session", "u", 1, "<username>" },
-    { 'v', "version", "Show version number and exit", "v", 0, NULL },
-    { 'w', "password", "Password to use when connecting to an existing session", "w", 1, "<password>" },
-    { 0, NULL, NULL, NULL, 0, NULL }
+    { 'g', "config-dir", "Where to look for configuration files", "g", tr_option::Arg::Required, "<path>" },
+    { 'm', "minimized",  "Start minimized in system tray", "m", tr_option::Arg::None, NULL },
+    { 'p', "port",  "Port to use when connecting to an existing session", "p", tr_option::Arg::Required, "<port>" },
+    { 'r', "remote",  "Connect to an existing session at the specified hostname", "r", tr_option::Arg::Required, "<host>" },
+    { 'u', "username", "Username to use when connecting to an existing session", "u", tr_option::Arg::Required, "<username>" },
+    { 'v', "version", "Show version number and exit", "v", tr_option::Arg::None, NULL },
+    { 'w', "password", "Password to use when connecting to an existing session", "w", tr_option::Arg::Required, "<password>" },
+    { 0, NULL, NULL, NULL, tr_option::Arg::None, NULL }
   };
 
   const char*
@@ -191,7 +192,7 @@ Application::Application (int& argc, char ** argv):
 
   // set the fallback config dir
   if (configDir.isNull ())
-    configDir = QString::fromStdString (tr_getDefaultConfigDir ("transmission"));
+    configDir = Utils::toQString (tr_getDefaultConfigDir ("transmission"));
 
   // ensure our config directory exists
   QDir dir (configDir);

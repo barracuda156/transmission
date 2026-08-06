@@ -12,6 +12,12 @@
 
 #include <cctype> // isxdigit()
 
+// hidden from Qt 4's moc, which cannot parse C++20 standard headers
+#ifndef Q_MOC_RUN
+ #include <string>
+ #include <string_view>
+#endif
+
 #include <QPointer>
 #include <QRect>
 #include <QString>
@@ -24,6 +30,23 @@ class QIcon;
 class Utils
 {
   public:
+    // Qt 4's QString::fromStdString()/toStdString() convert through
+    // Latin-1, so UTF-8 interchange with libtransmission must go
+    // through fromUtf8()/toUtf8() explicitly.
+    static QString toQString (const std::string& str)
+    {
+      return QString::fromUtf8 (str.data (), static_cast<int> (str.size ()));
+    }
+    static QString toQString (const std::string_view& str)
+    {
+      return QString::fromUtf8 (str.data (), static_cast<int> (str.size ()));
+    }
+    static std::string toStdUtf8 (const QString& str)
+    {
+      const QByteArray utf8 = str.toUtf8 ();
+      return std::string (utf8.constData (), static_cast<size_t> (utf8.size ()));
+    }
+
     static QIcon guessMimeIcon (const QString& filename);
     // Test if string is UTF-8 or not
     static bool isValidUtf8 (const char * s);

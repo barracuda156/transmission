@@ -71,6 +71,10 @@ namespace
   tr_quark
   legacySessionKey (tr_quark const q)
   {
+    // renamed upstream, not just respelled: the legacy wire name is "peer-socket-tos"
+    if (q == TR_KEY_peer_socket_diffserv)
+      return TR_KEY_peer_socket_tos_kebab_APICOMPAT;
+
     const std::string_view sv = tr_quark_get_string_view (q);
     if (sv.find ('_') == std::string_view::npos)
       return q;
@@ -376,7 +380,7 @@ Session::start ()
     }
   else
     {
-      const std::string configDir = myConfigDir.toStdString ();
+      const std::string configDir = Utils::toStdUtf8 (myConfigDir);
       const tr_variant settings = tr_sessionLoadSettings (configDir);
       mySession = tr_sessionInit (configDir, true, settings);
 

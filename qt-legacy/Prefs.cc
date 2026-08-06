@@ -145,7 +145,7 @@ Prefs::Prefs (const QString& configDir):
   tr_variant defaults;
   tr_variantInitDict (&defaults, 0);
   initDefaults (&defaults);
-  tr_variant top = tr_sessionLoadSettings (myConfigDir.toStdString (), &defaults);
+  tr_variant top = tr_sessionLoadSettings (Utils::toStdUtf8 (myConfigDir), &defaults);
 
   for (int i=0; i<PREFS_COUNT; ++i)
     {
@@ -257,7 +257,7 @@ Prefs::~Prefs ()
 
   // update settings.json with our settings
   const QFile file (QDir(myConfigDir).absoluteFilePath(QLatin1String ("settings.json")));
-  const std::string filename = file.fileName().toStdString();
+  const std::string filename = Utils::toStdUtf8 (file.fileName());
   auto serde = tr_variant_serde::json();
   tr_variant file_settings;
   if (auto parsed = serde.parse_file(filename))

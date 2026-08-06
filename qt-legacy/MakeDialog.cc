@@ -88,7 +88,7 @@ MakeProgressDialog::onButtonBoxClicked (QAbstractButton * button)
     {
       case QDialogButtonBox::Open:
         mySession.addNewlyCreatedTorrent (myOutfile,
-                                          QFileInfo (QString::fromStdString (myBuilder.top ())).dir ().path ());
+                                          QFileInfo (Utils::toQString (myBuilder.top ())).dir ().path ());
         break;
 
       case QDialogButtonBox::Abort:
@@ -125,7 +125,7 @@ MakeProgressDialog::onProgress ()
   ui.progressBar->setValue (progress);
 
   // progress label
-  const QString top = QString::fromStdString (myBuilder.top ());
+  const QString top = Utils::toQString (myBuilder.top ());
   const QString base (QFileInfo (top).completeBaseName ());
   QString str;
   bool success = false;
@@ -138,7 +138,7 @@ MakeProgressDialog::onProgress ()
       tr_error error = myFuture.get ();
 
       if (!error)
-        myBuilder.save (myOutfile.toStdString (), &error);
+        myBuilder.save (Utils::toStdUtf8 (myOutfile), &error);
 
       if (!error)
         {
@@ -175,21 +175,21 @@ MakeDialog::makeTorrent ()
 
   // get the announce list
   tr_announce_list trackers;
-  trackers.parse (ui.trackersEdit->toPlainText ().toStdString ());
+  trackers.parse (Utils::toStdUtf8 (ui.trackersEdit->toPlainText ()));
   myBuilder->set_announce_list (std::move (trackers));
 
   // the file to create
-  const QString path = QString::fromStdString (myBuilder->top ());
+  const QString path = Utils::toQString (myBuilder->top ());
   const QString torrentName = QFileInfo (path).completeBaseName () + QLatin1String (".torrent");
   const QString target = QDir (ui.destinationButton->path ()).filePath (torrentName);
 
   // comment
   if (ui.commentCheck->isChecked ())
-    myBuilder->set_comment (ui.commentEdit->text ().toStdString ());
+    myBuilder->set_comment (Utils::toStdUtf8 (ui.commentEdit->text ()));
 
   // source
   if (ui.sourceCheck->isChecked ())
-    myBuilder->set_source (ui.sourceEdit->text ().toStdString ());
+    myBuilder->set_source (Utils::toStdUtf8 (ui.sourceEdit->text ()));
 
   myBuilder->set_private (ui.privateCheck->isChecked ());
 
@@ -255,7 +255,7 @@ MakeDialog::onSourceChanged ()
 
   const QString filename = getSource ();
   if (!filename.isEmpty ())
-    myBuilder.reset (new tr_metainfo_builder (filename.toStdString ()));
+    myBuilder.reset (new tr_metainfo_builder (Utils::toStdUtf8 (filename)));
 
   updatePiecesLabel ();
 
