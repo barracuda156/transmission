@@ -502,6 +502,16 @@ if(ENABLE_MAC)
     tr_fixup_auto_option(ENABLE_MAC MAC_FOUND MAC_IS_REQUIRED)
 endif()
 
+if(APPLE)
+    # Directory .app bundles are installed into, independent of
+    # CMAKE_INSTALL_PREFIX (which governs the Unix-style bin/share/man
+    # layout). MacPorts installs bundles under applications_dir (default
+    # /Applications/MacPorts), not ${prefix}; a MacPorts Portfile should
+    # pass -DTR_BUNDLE_INSTALL_PREFIX=${applications_dir}.
+    set(TR_BUNDLE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}/Applications" CACHE PATH
+        "Directory .app bundles are installed into")
+endif()
+
 if(WIN32 AND NOT MINGW)
     set(DEFLATE_LIB_NAME deflatestatic)
 else()
