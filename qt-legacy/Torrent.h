@@ -163,6 +163,7 @@ class Torrent: public QObject
       TRACKERS,
       HOSTS,
       LABELS,
+      TRACKER_LIST,
       TRACKERSTATS,
       MIME_ICON,
       SEED_RATIO_LIMIT,
@@ -263,6 +264,7 @@ class Torrent: public QObject
     QStringList trackers() const { return myValues[TRACKERS].value<QStringList>(); }
     QStringList hosts() const { return myValues[HOSTS].value<QStringList>(); }
     QStringList labels() const { return myValues[LABELS].value<QStringList>(); }
+    QString trackerList() const { return getString (TRACKER_LIST); }
     PeerList peers () const{ return myValues[PEERS].value<PeerList>(); }
     const FileList& files () const { return myFiles; }
     int queuePosition () const { return getInt (QUEUE_POSITION); }

@@ -85,6 +85,7 @@ class Session: public QObject
     void torrentSet (const QSet<int>& ids, const tr_quark key, bool val);
     void torrentSet (const QSet<int>& ids, const tr_quark key, int val);
     void torrentSet (const QSet<int>& ids, const tr_quark key, double val);
+    void torrentSet (const QSet<int>& ids, const tr_quark key, const QString& val);
     void torrentSet (const QSet<int>& ids, const tr_quark key, const QList<int>& val);
     void torrentSet (const QSet<int>& ids, const tr_quark key, const QStringList& val);
     void torrentSet (const QSet<int>& ids, const tr_quark key, const QPair<int,QString>& val);

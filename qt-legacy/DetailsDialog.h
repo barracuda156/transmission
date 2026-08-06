@@ -69,6 +69,8 @@ class DetailsDialog: public BaseDialog
     void onAddTrackerClicked ();
     void onEditTrackerClicked ();
     void onRemoveTrackerClicked ();
+    void onEditTrackersClicked ();
+    void onTrackerListEdited (const QString&);
     void onShowTrackerScrapesToggled (bool);
     void onShowBackupTrackersToggled (bool);
 

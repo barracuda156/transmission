@@ -436,6 +436,17 @@ Session::torrentSet (const QSet<int>& ids, const tr_quark key, double value)
 }
 
 void
+Session::torrentSet (const QSet<int>& ids, const tr_quark key, const QString& value)
+{
+  tr_variant args;
+  tr_variantInitDict (&args, 2);
+  tr_variantDictAddStr (&args, key, Utils::toStdUtf8 (value));
+  addOptionalIds (&args, ids);
+
+  exec (TR_KEY_torrent_set_kebab_APICOMPAT, &args);
+}
+
+void
 Session::torrentSet (const QSet<int>& ids, const tr_quark key, int value)
 {
   tr_variant args;

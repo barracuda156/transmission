@@ -30,8 +30,12 @@
 #include <QStyle>
 #include <QTreeWidgetItem>
 
-#include <libtransmission/transmission.h>
-#include <libtransmission/utils.h> // tr_getRatio ()
+// DetailsDialog.cc is moc'd (for the TrackersDialog class below); Qt 4's
+// moc cannot parse the C++20 libtransmission headers.
+#ifndef Q_MOC_RUN
+ #include <libtransmission/transmission.h>
+ #include <libtransmission/utils.h> // tr_getRatio ()
+#endif
 
 #include "ColumnResizer.h"
 #include "DetailsDialog.h"
@@ -45,6 +49,8 @@
 #include "TrackerModel.h"
 #include "TrackerModelFilter.h"
 #include "Utils.h"
+
+#include "ui_TrackersDialog.h"
 
 class Prefs;
 class Session;
@@ -81,6 +87,35 @@ namespace
 
     return std::max (itemWidth, headerWidth);
   }
+
+  class TrackersDialog: public BaseDialog
+  {
+      Q_OBJECT
+
+    public:
+      TrackersDialog (const QString& trackerList, QWidget * parent = nullptr):
+        BaseDialog (parent)
+      {
+        ui.setupUi (this);
+        ui.trackerList->setPlainText (trackerList);
+        connect (ui.dialogButtons, SIGNAL (clicked (QAbstractButton*)), SLOT (onButtonBoxClicked (QAbstractButton*)));
+      }
+
+    signals:
+      void trackerListEdited (const QString&);
+
+    private slots:
+      void onButtonBoxClicked (QAbstractButton * button)
+      {
+        if (ui.dialogButtons->standardButton (button) == QDialogButtonBox::Ok)
+          emit trackerListEdited (ui.trackerList->toPlainText ());
+
+        close ();
+      }
+
+    private:
+      Ui::TrackersDialog ui;
+  };
 }
 
 /***
@@ -238,6 +273,7 @@ DetailsDialog::setIds (const QSet<int>& ids)
   myTrackerModel->refresh (myModel, myIds);
   myLabelsBaseline.clear ();
   ui.labelsTextEdit->clearFocus ();
+  ui.editTrackersButton->setEnabled (myIds.size () == 1);
 
   // listen to the new torrents
   for (const int id: myIds)
@@ -1222,6 +1258,29 @@ DetailsDialog::onRemoveTrackerClicked ()
 }
 
 void
+DetailsDialog::onEditTrackersClicked ()
+{
+  if (myIds.size () != 1)
+    return;
+
+  const Torrent * tor = myModel.getTorrentFromId (*myIds.begin ());
+  if (tor == nullptr)
+    return;
+
+  TrackersDialog * dialog = new TrackersDialog (tor->trackerList (), this);
+  dialog->setAttribute (Qt::WA_DeleteOnClose);
+  connect (dialog, SIGNAL (trackerListEdited (const QString&)), SLOT (onTrackerListEdited (const QString&)));
+  dialog->show ();
+}
+
+void
+DetailsDialog::onTrackerListEdited (const QString& trackerList)
+{
+  mySession.torrentSet (myIds, TR_KEY_tracker_list_camel_APICOMPAT, trackerList);
+  getNewData ();
+}
+
+void
 DetailsDialog::initOptionsTab ()
 {
   const QString speed_K_str = Formatter::unitStr (Formatter::SPEED, Formatter::KB);
@@ -1286,6 +1345,7 @@ DetailsDialog::initTrackerTab ()
   ui.addTrackerButton->setIcon (getStockIcon (QLatin1String ("list-add"), QStyle::SP_DialogOpenButton));
   ui.editTrackerButton->setIcon (getStockIcon (QLatin1String ("document-properties"), QStyle::SP_DesktopIcon));
   ui.removeTrackerButton->setIcon (getStockIcon (QLatin1String ("list-remove"), QStyle::SP_TrashIcon));
+  ui.editTrackersButton->setIcon (getStockIcon (QLatin1String ("document-edit"), QStyle::SP_FileDialogDetailedView));
 
   ui.showTrackerScrapesCheck->setChecked (myPrefs.getBool (Prefs::SHOW_TRACKER_SCRAPES));
   ui.showBackupTrackersCheck->setChecked (myPrefs.getBool (Prefs::SHOW_BACKUP_TRACKERS));
@@ -1295,6 +1355,7 @@ DetailsDialog::initTrackerTab ()
   connect (ui.addTrackerButton, SIGNAL (clicked ()), SLOT (onAddTrackerClicked ()));
   connect (ui.editTrackerButton, SIGNAL (clicked ()), SLOT (onEditTrackerClicked ()));
   connect (ui.removeTrackerButton, SIGNAL (clicked ()), SLOT (onRemoveTrackerClicked ()));
+  connect (ui.editTrackersButton, SIGNAL (clicked ()), SLOT (onEditTrackersClicked ()));
   connect (ui.showTrackerScrapesCheck, SIGNAL (clicked (bool)), SLOT (onShowTrackerScrapesToggled (bool)));
   connect (ui.showBackupTrackersCheck, SIGNAL (clicked (bool)), SLOT (onShowBackupTrackersToggled (bool)));
 
@@ -1393,3 +1454,5 @@ DetailsDialog::onOpenRequested (const QString& path)
         break;
     }
 }
+
+#include "DetailsDialog.moc"
