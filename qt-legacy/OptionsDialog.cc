@@ -7,11 +7,15 @@
  * $Id$
  */
 
+#include <cstring> // memcmp
+#include <string>
+#include <string_view>
+
 #include <QFileInfo>
 #include <QPushButton>
 
 #include <libtransmission/transmission.h>
-#include <libtransmission/utils.h> /* mime64 */
+#include <libtransmission/torrent-metainfo.h>
 #include <libtransmission/variant.h>
 
 #include "AddData.h"
@@ -140,9 +144,7 @@ OptionsDialog::~OptionsDialog ()
 void
 OptionsDialog::clearInfo ()
 {
-  if (myHaveInfo)
-    tr_metainfoFree (&myInfo);
-
+  myMetainfo = tr_torrent_metainfo ();
   myHaveInfo = false;
   myFiles.clear ();
 }
@@ -153,36 +155,29 @@ OptionsDialog::reload ()
   clearInfo ();
   clearVerify ();
 
-  tr_ctor * ctor = tr_ctorNew (0);
-
+  // magnet links and URLs carry no metainfo to preview;
+  // for those the dialog simply shows no file list
   switch (myAdd.type)
     {
-      case AddData::MAGNET:
-        tr_ctorSetMetainfoFromMagnetLink (ctor, myAdd.magnet.toUtf8 ().constData ());
-        break;
-
       case AddData::FILENAME:
-        tr_ctorSetMetainfoFromFile (ctor, myAdd.filename.toUtf8 ().constData ());
+        myHaveInfo = myMetainfo.parse_torrent_file (myAdd.filename.toStdString ());
         break;
 
       case AddData::METAINFO:
-        tr_ctorSetMetainfo (ctor, reinterpret_cast<const quint8*> (myAdd.metainfo.constData ()), myAdd.metainfo.size ());
+        myHaveInfo = myMetainfo.parse_benc (std::string_view (myAdd.metainfo.constData (), static_cast<size_t> (myAdd.metainfo.size ())));
         break;
 
       default:
         break;
     }
 
-  const int err = tr_torrentParse (ctor, &myInfo);
-  myHaveInfo = !err;
-  tr_ctorFree (ctor);
-
   ui.filesView->clear ();
   myFiles.clear ();
   myPriorities.clear ();
   myWanted.clear ();
 
-  const bool haveFilesToShow = myHaveInfo && myInfo.fileCount > 0;
+  const size_t fileCount = myHaveInfo ? myMetainfo.file_count () : 0;
+  const bool haveFilesToShow = fileCount > 0;
 
   ui.filesView->setVisible (haveFilesToShow);
   if (myVerifyButton != nullptr)
@@ -191,18 +186,18 @@ OptionsDialog::reload ()
 
   if (myHaveInfo)
     {
-      myPriorities.insert (0, myInfo.fileCount, TR_PRI_NORMAL);
-      myWanted.insert (0, myInfo.fileCount, true);
+      myPriorities.insert (0, fileCount, TR_PRI_NORMAL);
+      myWanted.insert (0, fileCount, true);
 
-      for (tr_file_index_t i = 0; i < myInfo.fileCount; ++i)
+      for (tr_file_index_t i = 0; i < fileCount; ++i)
         {
           TorrentFile file;
           file.index = i;
           file.priority = myPriorities[i];
           file.wanted = myWanted[i];
-          file.size = myInfo.files[i].length;
+          file.size = myMetainfo.file_size (i);
           file.have = 0;
-          file.filename = QString::fromUtf8 (myInfo.files[i].name);
+          file.filename = QString::fromStdString (myMetainfo.file_subpath (i));
           myFiles.append (file);
         }
     }
@@ -343,19 +338,9 @@ void
 OptionsDialog::onVerify ()
 {
   clearVerify ();
-  myVerifyFlags.insert (0, myInfo.pieceCount, false);
+  myVerifyFlags.insert (0, myMetainfo.piece_count (), false);
   myVerifyTimer.setSingleShot (false);
   myVerifyTimer.start (0);
-}
-
-namespace
-{
-  uint64_t getPieceSize (const tr_info * info, tr_piece_index_t pieceIndex)
-  {
-    if (pieceIndex != info->pieceCount - 1)
-      return info->pieceSize;
-    return info->totalSize % info->pieceSize;
-  }
 }
 
 void
@@ -367,17 +352,17 @@ OptionsDialog::onTimeout ()
       return;
     }
 
-  const tr_file * file = &myInfo.files[myVerifyFileIndex];
+  const QString fileSubpath = QString::fromStdString (myMetainfo.file_subpath (myVerifyFileIndex));
 
   if (!myVerifyFilePos && !myVerifyFile.isOpen ())
     {
-      const QFileInfo fileInfo (myLocalDestination, QString::fromUtf8 (file->name));
+      const QFileInfo fileInfo (myLocalDestination, fileSubpath);
       myVerifyFile.setFileName (fileInfo.absoluteFilePath ());
       myVerifyFile.open (QIODevice::ReadOnly);
     }
 
-  int64_t leftInPiece = getPieceSize (&myInfo, myVerifyPieceIndex) - myVerifyPiecePos;
-  int64_t leftInFile = file->length - myVerifyFilePos;
+  int64_t leftInPiece = myMetainfo.piece_size (myVerifyPieceIndex) - myVerifyPiecePos;
+  int64_t leftInFile = myMetainfo.file_size (myVerifyFileIndex) - myVerifyFilePos;
   int64_t bytesThisPass = qMin (leftInFile, leftInPiece);
   bytesThisPass = qMin (bytesThisPass, static_cast<int64_t> (sizeof (myVerifyBuf)));
 
@@ -398,9 +383,9 @@ OptionsDialog::onTimeout ()
   if (leftInPiece == 0)
     {
       const QByteArray result (myVerifyHash.result ());
-      const bool matches = !memcmp (result.constData (),
-                                    myInfo.pieces[myVerifyPieceIndex].hash,
-                                    SHA_DIGEST_LENGTH);
+      const tr_sha1_digest_t& expected = myMetainfo.piece_hash (myVerifyPieceIndex);
+      const bool matches = result.size () == static_cast<int> (expected.size ()) &&
+                           !memcmp (result.constData (), expected.data (), expected.size ());
       myVerifyFlags[myVerifyPieceIndex] = matches;
       myVerifyPiecePos = 0;
       ++myVerifyPieceIndex;
@@ -427,7 +412,7 @@ OptionsDialog::onTimeout ()
       myVerifyFilePos = 0;
     }
 
-  bool done = myVerifyPieceIndex >= myInfo.pieceCount;
+  bool done = myVerifyPieceIndex >= myMetainfo.piece_count ();
   if (done)
     {
       uint64_t have = 0;
@@ -437,7 +422,7 @@ OptionsDialog::onTimeout ()
       if (!have) // everything failed
         {
           // did the user accidentally specify the child directory instead of the parent?
-          const QStringList tokens = QString::fromUtf8 (file->name).split (QLatin1Char ('/'));
+          const QStringList tokens = fileSubpath.split (QLatin1Char ('/'));
           if (!tokens.empty () && myLocalDestination.dirName () == tokens.at (0))
             {
               // move up one directory and try again

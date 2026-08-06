@@ -7,11 +7,15 @@
  * $Id$
  */
 
+#include <string>
+#include <string_view>
+
 #include <QFile>
 #include <QDir>
 
 #include <libtransmission/transmission.h>
 #include <libtransmission/crypto-utils.h> // tr_base64_encode()
+#include <libtransmission/torrent-metainfo.h>
 
 #include "AddData.h"
 #include "Utils.h"
@@ -46,12 +50,11 @@ AddData::set (const QString& key)
     }
   else
     {
-      size_t len;
-      void * raw = tr_base64_decode (key.toUtf8().constData(), key.toUtf8().size(), &len);
-      if (raw)
+      const QByteArray utf8 = key.toUtf8();
+      const std::string raw = tr_base64_decode (std::string_view (utf8.constData(), static_cast<size_t> (utf8.size())));
+      if (!raw.empty())
         {
-          metainfo.append (static_cast<const char*> (raw), int(len));
-          tr_free (raw);
+          metainfo.append (raw.data(), int(raw.size()));
           type = METAINFO;
         }
       else
@@ -70,10 +73,8 @@ AddData::toBase64 () const
 
   if (!metainfo.isEmpty ())
     {
-      size_t len;
-      void * b64 = tr_base64_encode (metainfo.constData(), metainfo.size(), &len);
-      ret = QByteArray (static_cast<const char*> (b64), int(len));
-      tr_free (b64);
+      const std::string b64 = tr_base64_encode (std::string_view (metainfo.constData(), static_cast<size_t> (metainfo.size())));
+      ret = QByteArray (b64.data(), int(b64.size()));
     }
 
   return ret;
@@ -100,15 +101,9 @@ AddData::readableName () const
 
       case METAINFO:
         {
-          tr_info inf;
-          tr_ctor * ctor = tr_ctorNew (NULL);
-          tr_ctorSetMetainfo (ctor, reinterpret_cast<const quint8*> (metainfo.constData()), metainfo.size());
-          if (tr_torrentParse (ctor, &inf) == TR_PARSE_OK )
-            {
-              ret = QString::fromUtf8 (inf.name); // metainfo is required to be UTF-8
-              tr_metainfoFree (&inf);
-            }
-          tr_ctorFree (ctor);
+          tr_torrent_metainfo tm;
+          if (tm.parse_benc (std::string_view (metainfo.constData(), static_cast<size_t> (metainfo.size()))))
+            ret = QString::fromStdString (tm.name ()); // metainfo is required to be UTF-8
           break;
         }
     }

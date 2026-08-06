@@ -4,7 +4,6 @@
  * It may be used under the GNU GPL versions 2 or 3
  * or any future license endorsed by Mnemosyne LLC.
  *
- * $Id$
  */
 
 #ifndef QTR_MAKE_DIALOG_H
@@ -20,10 +19,10 @@ class QAbstractButton;
 
 class Session;
 
-extern "C"
-{
-  struct tr_metainfo_builder;
-}
+// the builder is only referenced through a pointer here, so a bare
+// declaration keeps the C++20 libtransmission headers out of this
+// moc'd header
+class tr_metainfo_builder;
 
 class MakeDialog: public BaseDialog
 {
@@ -40,9 +39,11 @@ class MakeDialog: public BaseDialog
 
   private:
     QString getSource () const;
+    void updatePiecesLabel ();
 
   private slots:
     void onSourceChanged ();
+    void onPieceSizeUpdated (int value);
     void makeTorrent ();
 
   private:
@@ -50,7 +51,7 @@ class MakeDialog: public BaseDialog
 
     Ui::MakeDialog ui;
 
-    std::unique_ptr<tr_metainfo_builder, void(*)(tr_metainfo_builder*)> myBuilder;
+    std::unique_ptr<tr_metainfo_builder> myBuilder;
 };
 
 #endif // QTR_MAKE_DIALOG_H
