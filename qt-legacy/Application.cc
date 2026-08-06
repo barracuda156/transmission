@@ -558,6 +558,8 @@ int
 tr_main (int    argc,
          char * argv[])
 {
+  tr_lib_init ();
+
   InteropHelper::initialize ();
 
   Application app (argc, argv);
