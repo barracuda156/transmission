@@ -979,13 +979,13 @@ DetailsDialog::onShowBackupTrackersToggled (bool val)
 void
 DetailsDialog::onHonorsSessionLimitsToggled (bool val)
 {
-  mySession.torrentSet (myIds, TR_KEY_honorsSessionLimits, val);
+  mySession.torrentSet (myIds, TR_KEY_honors_session_limits_camel_APICOMPAT, val);
   getNewData ();
 }
 void
 DetailsDialog::onDownloadLimitedToggled (bool val)
 {
-  mySession.torrentSet (myIds, TR_KEY_downloadLimited, val);
+  mySession.torrentSet (myIds, TR_KEY_download_limited_camel_APICOMPAT, val);
   getNewData ();
 }
 void
@@ -1004,7 +1004,7 @@ DetailsDialog::onSpinBoxEditingFinished ()
 void
 DetailsDialog::onUploadLimitedToggled (bool val)
 {
-  mySession.torrentSet (myIds, TR_KEY_uploadLimited, val);
+  mySession.torrentSet (myIds, TR_KEY_upload_limited_camel_APICOMPAT, val);
   getNewData ();
 }
 
@@ -1012,7 +1012,7 @@ void
 DetailsDialog::onIdleModeChanged (int index)
 {
   const int val = ui.idleCombo->itemData (index).toInt ();
-  mySession.torrentSet (myIds, TR_KEY_seedIdleMode, val);
+  mySession.torrentSet (myIds, TR_KEY_seed_idle_mode_camel_APICOMPAT, val);
   getNewData ();
 }
 
@@ -1029,7 +1029,7 @@ void
 DetailsDialog::onRatioModeChanged (int index)
 {
   const int val = ui.ratioCombo->itemData (index).toInt ();
-  mySession.torrentSet (myIds, TR_KEY_seedRatioMode, val);
+  mySession.torrentSet (myIds, TR_KEY_seed_ratio_mode_camel_APICOMPAT, val);
 }
 
 void
@@ -1038,7 +1038,7 @@ DetailsDialog::onBandwidthPriorityChanged (int index)
   if (index != -1)
     {
       const int priority = ui.bandwidthPriorityCombo->itemData (index).toInt ();
-      mySession.torrentSet (myIds, TR_KEY_bandwidthPriority, priority);
+      mySession.torrentSet (myIds, TR_KEY_bandwidth_priority_camel_APICOMPAT, priority);
       getNewData ();
     }
 }
@@ -1083,7 +1083,7 @@ DetailsDialog::onAddTrackerClicked ()
         {
           QStringList urls;
           urls << url;
-          mySession.torrentSet (ids, TR_KEY_trackerAdd, urls);
+          mySession.torrentSet (ids, TR_KEY_tracker_add_camel_APICOMPAT, urls);
           getNewData ();
         }
     }
@@ -1120,7 +1120,7 @@ DetailsDialog::onEditTrackerClicked ()
 
       const QPair<int,QString> idUrl = qMakePair (trackerInfo.st.id, newval);
 
-      mySession.torrentSet (ids, TR_KEY_trackerReplace, idUrl);
+      mySession.torrentSet (ids, TR_KEY_tracker_replace_camel_APICOMPAT, idUrl);
       getNewData ();
     }
 }
@@ -1143,7 +1143,7 @@ DetailsDialog::onRemoveTrackerClicked ()
     {
       QSet<int> ids;
       ids << id;
-      mySession.torrentSet (ids, TR_KEY_trackerRemove, torrentId_to_trackerIds.values (id));
+      mySession.torrentSet (ids, TR_KEY_tracker_remove_camel_APICOMPAT, torrentId_to_trackerIds.values (id));
     }
 
   selectionModel->clearSelection ();
@@ -1158,11 +1158,11 @@ DetailsDialog::initOptionsTab ()
   ui.singleDownSpin->setSuffix (QString::fromLatin1 (" %1").arg (speed_K_str));
   ui.singleUpSpin->setSuffix (QString::fromLatin1 (" %1").arg (speed_K_str));
 
-  ui.singleDownSpin->setProperty (PREF_KEY, TR_KEY_downloadLimit);
-  ui.singleUpSpin->setProperty (PREF_KEY, TR_KEY_uploadLimit);
-  ui.ratioSpin->setProperty (PREF_KEY, TR_KEY_seedRatioLimit);
-  ui.idleSpin->setProperty (PREF_KEY, TR_KEY_seedIdleLimit);
-  ui.peerLimitSpin->setProperty (PREF_KEY, TR_KEY_peer_limit);
+  ui.singleDownSpin->setProperty (PREF_KEY, TR_KEY_download_limit_camel_APICOMPAT);
+  ui.singleUpSpin->setProperty (PREF_KEY, TR_KEY_upload_limit_camel_APICOMPAT);
+  ui.ratioSpin->setProperty (PREF_KEY, TR_KEY_seed_ratio_limit_camel_APICOMPAT);
+  ui.idleSpin->setProperty (PREF_KEY, TR_KEY_seed_idle_limit_camel_APICOMPAT);
+  ui.peerLimitSpin->setProperty (PREF_KEY, TR_KEY_peer_limit_kebab_APICOMPAT);
 
   ui.bandwidthPriorityCombo->addItem (tr ("High"),   TR_PRI_HIGH);
   ui.bandwidthPriorityCombo->addItem (tr ("Normal"), TR_PRI_NORMAL);
@@ -1272,15 +1272,15 @@ DetailsDialog::onFilePriorityChanged (const QSet<int>& indices, int priority)
   switch (priority)
     {
       case TR_PRI_LOW:
-        key = TR_KEY_priority_low;
+        key = TR_KEY_priority_low_kebab_APICOMPAT;
         break;
 
       case TR_PRI_HIGH:
-        key = TR_KEY_priority_high;
+        key = TR_KEY_priority_high_kebab_APICOMPAT;
         break;
 
       default:
-        key = TR_KEY_priority_normal;
+        key = TR_KEY_priority_normal_kebab_APICOMPAT;
         break;
     }
 
@@ -1291,7 +1291,7 @@ DetailsDialog::onFilePriorityChanged (const QSet<int>& indices, int priority)
 void
 DetailsDialog::onFileWantedChanged (const QSet<int>& indices, bool wanted)
 {
-  const tr_quark key = wanted ? TR_KEY_files_wanted : TR_KEY_files_unwanted;
+  const tr_quark key = wanted ? TR_KEY_files_wanted_kebab_APICOMPAT : TR_KEY_files_unwanted_kebab_APICOMPAT;
   mySession.torrentSet (myIds, key, indices.toList ());
   getNewData ();
 }

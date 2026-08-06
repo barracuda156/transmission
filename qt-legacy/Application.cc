@@ -191,7 +191,7 @@ Application::Application (int& argc, char ** argv):
 
   // set the fallback config dir
   if (configDir.isNull ())
-    configDir = QString::fromUtf8 (tr_getDefaultConfigDir ("transmission"));
+    configDir = QString::fromStdString (tr_getDefaultConfigDir ("transmission"));
 
   // ensure our config directory exists
   QDir dir (configDir);

@@ -9,6 +9,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <string_view>
 
 #include <QApplication>
 #include <QFileIconProvider>
@@ -20,7 +21,7 @@
 #include <QVariant>
 
 #include <libtransmission/transmission.h>
-#include <libtransmission/utils.h> /* tr_new0, tr_strdup */
+#include <libtransmission/quark.h>
 #include <libtransmission/variant.h>
 
 #include "Application.h"
@@ -53,61 +54,61 @@ Torrent::Property
 Torrent::myProperties[] =
 {
   { ID, TR_KEY_id, QVariant::Int, INFO, },
-  { UPLOAD_SPEED, TR_KEY_rateUpload, QVariant::ULongLong, STAT } /* Bps */,
-  { DOWNLOAD_SPEED, TR_KEY_rateDownload, QVariant::ULongLong, STAT }, /* Bps */
-  { DOWNLOAD_DIR, TR_KEY_downloadDir, QVariant::String, STAT },
+  { UPLOAD_SPEED, TR_KEY_rate_upload_camel_APICOMPAT, QVariant::ULongLong, STAT } /* Bps */,
+  { DOWNLOAD_SPEED, TR_KEY_rate_download_camel_APICOMPAT, QVariant::ULongLong, STAT }, /* Bps */
+  { DOWNLOAD_DIR, TR_KEY_download_dir_camel_APICOMPAT, QVariant::String, STAT },
   { ACTIVITY, TR_KEY_status, QVariant::Int, STAT },
   { NAME, TR_KEY_name, QVariant::String, INFO },
   { ERROR, TR_KEY_error, QVariant::Int, STAT },
-  { ERROR_STRING, TR_KEY_errorString, QVariant::String, STAT },
-  { SIZE_WHEN_DONE, TR_KEY_sizeWhenDone, QVariant::ULongLong, STAT },
-  { LEFT_UNTIL_DONE, TR_KEY_leftUntilDone, QVariant::ULongLong, STAT },
-  { HAVE_UNCHECKED, TR_KEY_haveUnchecked, QVariant::ULongLong, STAT },
-  { HAVE_VERIFIED, TR_KEY_haveValid, QVariant::ULongLong, STAT },
-  { DESIRED_AVAILABLE, TR_KEY_desiredAvailable, QVariant::ULongLong, STAT },
-  { TOTAL_SIZE, TR_KEY_totalSize, QVariant::ULongLong, INFO },
-  { PIECE_SIZE, TR_KEY_pieceSize, QVariant::ULongLong, INFO },
-  { PIECE_COUNT, TR_KEY_pieceCount, QVariant::Int, INFO },
-  { PEERS_GETTING_FROM_US, TR_KEY_peersGettingFromUs, QVariant::Int, STAT },
-  { PEERS_SENDING_TO_US, TR_KEY_peersSendingToUs, QVariant::Int, STAT },
-  { WEBSEEDS_SENDING_TO_US, TR_KEY_webseedsSendingToUs, QVariant::Int, STAT_EXTRA },
-  { PERCENT_DONE, TR_KEY_percentDone, QVariant::Double, STAT },
-  { METADATA_PERCENT_DONE, TR_KEY_metadataPercentComplete, QVariant::Double, STAT },
-  { PERCENT_VERIFIED, TR_KEY_recheckProgress, QVariant::Double, STAT },
-  { DATE_ACTIVITY, TR_KEY_activityDate, QVariant::DateTime, STAT_EXTRA },
-  { DATE_ADDED, TR_KEY_addedDate, QVariant::DateTime, INFO },
-  { DATE_STARTED, TR_KEY_startDate, QVariant::DateTime, STAT_EXTRA },
-  { DATE_CREATED, TR_KEY_dateCreated, QVariant::DateTime, INFO },
-  { PEERS_CONNECTED, TR_KEY_peersConnected, QVariant::Int, STAT },
+  { ERROR_STRING, TR_KEY_error_string_camel_APICOMPAT, QVariant::String, STAT },
+  { SIZE_WHEN_DONE, TR_KEY_size_when_done_camel_APICOMPAT, QVariant::ULongLong, STAT },
+  { LEFT_UNTIL_DONE, TR_KEY_left_until_done_camel_APICOMPAT, QVariant::ULongLong, STAT },
+  { HAVE_UNCHECKED, TR_KEY_have_unchecked_camel_APICOMPAT, QVariant::ULongLong, STAT },
+  { HAVE_VERIFIED, TR_KEY_have_valid_camel_APICOMPAT, QVariant::ULongLong, STAT },
+  { DESIRED_AVAILABLE, TR_KEY_desired_available_camel_APICOMPAT, QVariant::ULongLong, STAT },
+  { TOTAL_SIZE, TR_KEY_total_size_camel_APICOMPAT, QVariant::ULongLong, INFO },
+  { PIECE_SIZE, TR_KEY_piece_size_camel_APICOMPAT, QVariant::ULongLong, INFO },
+  { PIECE_COUNT, TR_KEY_piece_count_camel_APICOMPAT, QVariant::Int, INFO },
+  { PEERS_GETTING_FROM_US, TR_KEY_peers_getting_from_us_camel_APICOMPAT, QVariant::Int, STAT },
+  { PEERS_SENDING_TO_US, TR_KEY_peers_sending_to_us_camel_APICOMPAT, QVariant::Int, STAT },
+  { WEBSEEDS_SENDING_TO_US, TR_KEY_webseeds_sending_to_us_camel_APICOMPAT, QVariant::Int, STAT_EXTRA },
+  { PERCENT_DONE, TR_KEY_percent_done_camel_APICOMPAT, QVariant::Double, STAT },
+  { METADATA_PERCENT_DONE, TR_KEY_metadata_percent_complete_camel_APICOMPAT, QVariant::Double, STAT },
+  { PERCENT_VERIFIED, TR_KEY_recheck_progress_camel_APICOMPAT, QVariant::Double, STAT },
+  { DATE_ACTIVITY, TR_KEY_activity_date_camel_APICOMPAT, QVariant::DateTime, STAT_EXTRA },
+  { DATE_ADDED, TR_KEY_added_date_camel_APICOMPAT, QVariant::DateTime, INFO },
+  { DATE_STARTED, TR_KEY_start_date_camel_APICOMPAT, QVariant::DateTime, STAT_EXTRA },
+  { DATE_CREATED, TR_KEY_date_created_camel_APICOMPAT, QVariant::DateTime, INFO },
+  { PEERS_CONNECTED, TR_KEY_peers_connected_camel_APICOMPAT, QVariant::Int, STAT },
   { ETA, TR_KEY_eta, QVariant::Int, STAT },
-  { RATIO, TR_KEY_uploadRatio, QVariant::Double, STAT },
-  { DOWNLOADED_EVER, TR_KEY_downloadedEver, QVariant::ULongLong, STAT },
-  { UPLOADED_EVER, TR_KEY_uploadedEver, QVariant::ULongLong, STAT },
-  { FAILED_EVER, TR_KEY_corruptEver, QVariant::ULongLong, STAT_EXTRA },
+  { RATIO, TR_KEY_upload_ratio_camel_APICOMPAT, QVariant::Double, STAT },
+  { DOWNLOADED_EVER, TR_KEY_downloaded_ever_camel_APICOMPAT, QVariant::ULongLong, STAT },
+  { UPLOADED_EVER, TR_KEY_uploaded_ever_camel_APICOMPAT, QVariant::ULongLong, STAT },
+  { FAILED_EVER, TR_KEY_corrupt_ever_camel_APICOMPAT, QVariant::ULongLong, STAT_EXTRA },
   { TRACKERS, TR_KEY_trackers, QVariant::StringList, STAT },
   { HOSTS, TR_KEY_NONE, QVariant::StringList, DERIVED },
-  { TRACKERSTATS, TR_KEY_trackerStats, CustomVariantType::TrackerStatsList, STAT_EXTRA },
+  { TRACKERSTATS, TR_KEY_tracker_stats_camel_APICOMPAT, CustomVariantType::TrackerStatsList, STAT_EXTRA },
   { MIME_ICON, TR_KEY_NONE, QVariant::Icon, DERIVED },
-  { SEED_RATIO_LIMIT, TR_KEY_seedRatioLimit, QVariant::Double, STAT },
-  { SEED_RATIO_MODE, TR_KEY_seedRatioMode, QVariant::Int, STAT },
-  { SEED_IDLE_LIMIT, TR_KEY_seedIdleLimit, QVariant::Int, STAT_EXTRA },
-  { SEED_IDLE_MODE, TR_KEY_seedIdleMode, QVariant::Int, STAT_EXTRA },
-  { DOWN_LIMIT, TR_KEY_downloadLimit, QVariant::Int, STAT_EXTRA }, /* KB/s */
-  { DOWN_LIMITED, TR_KEY_downloadLimited, QVariant::Bool, STAT_EXTRA },
-  { UP_LIMIT, TR_KEY_uploadLimit, QVariant::Int, STAT_EXTRA }, /* KB/s */
-  { UP_LIMITED, TR_KEY_uploadLimited, QVariant::Bool, STAT_EXTRA },
-  { HONORS_SESSION_LIMITS, TR_KEY_honorsSessionLimits, QVariant::Bool, STAT_EXTRA },
-  { PEER_LIMIT, TR_KEY_peer_limit, QVariant::Int, STAT_EXTRA },
-  { HASH_STRING, TR_KEY_hashString, QVariant::String, INFO },
-  { IS_FINISHED, TR_KEY_isFinished, QVariant::Bool, STAT },
-  { IS_PRIVATE, TR_KEY_isPrivate, QVariant::Bool, INFO },
-  { IS_STALLED, TR_KEY_isStalled, QVariant::Bool, STAT },
+  { SEED_RATIO_LIMIT, TR_KEY_seed_ratio_limit_camel_APICOMPAT, QVariant::Double, STAT },
+  { SEED_RATIO_MODE, TR_KEY_seed_ratio_mode_camel_APICOMPAT, QVariant::Int, STAT },
+  { SEED_IDLE_LIMIT, TR_KEY_seed_idle_limit_camel_APICOMPAT, QVariant::Int, STAT_EXTRA },
+  { SEED_IDLE_MODE, TR_KEY_seed_idle_mode_camel_APICOMPAT, QVariant::Int, STAT_EXTRA },
+  { DOWN_LIMIT, TR_KEY_download_limit_camel_APICOMPAT, QVariant::Int, STAT_EXTRA }, /* KB/s */
+  { DOWN_LIMITED, TR_KEY_download_limited_camel_APICOMPAT, QVariant::Bool, STAT_EXTRA },
+  { UP_LIMIT, TR_KEY_upload_limit_camel_APICOMPAT, QVariant::Int, STAT_EXTRA }, /* KB/s */
+  { UP_LIMITED, TR_KEY_upload_limited_camel_APICOMPAT, QVariant::Bool, STAT_EXTRA },
+  { HONORS_SESSION_LIMITS, TR_KEY_honors_session_limits_camel_APICOMPAT, QVariant::Bool, STAT_EXTRA },
+  { PEER_LIMIT, TR_KEY_peer_limit_kebab_APICOMPAT, QVariant::Int, STAT_EXTRA },
+  { HASH_STRING, TR_KEY_hash_string_camel_APICOMPAT, QVariant::String, INFO },
+  { IS_FINISHED, TR_KEY_is_finished_camel_APICOMPAT, QVariant::Bool, STAT },
+  { IS_PRIVATE, TR_KEY_is_private_camel_APICOMPAT, QVariant::Bool, INFO },
+  { IS_STALLED, TR_KEY_is_stalled_camel_APICOMPAT, QVariant::Bool, STAT },
   { COMMENT, TR_KEY_comment, QVariant::String, INFO },
   { CREATOR, TR_KEY_creator, QVariant::String, INFO },
-  { MANUAL_ANNOUNCE_TIME, TR_KEY_manualAnnounceTime, QVariant::DateTime, STAT_EXTRA },
+  { MANUAL_ANNOUNCE_TIME, TR_KEY_manual_announce_time_camel_APICOMPAT, QVariant::DateTime, STAT_EXTRA },
   { PEERS, TR_KEY_peers, CustomVariantType::PeerList, STAT_EXTRA },
-  { BANDWIDTH_PRIORITY, TR_KEY_bandwidthPriority, QVariant::Int, STAT_EXTRA },
-  { QUEUE_POSITION, TR_KEY_queuePosition, QVariant::Int, STAT },
+  { BANDWIDTH_PRIORITY, TR_KEY_bandwidth_priority_camel_APICOMPAT, QVariant::Int, STAT_EXTRA },
+  { QUEUE_POSITION, TR_KEY_queue_position_camel_APICOMPAT, QVariant::Int, STAT },
 };
 
 Torrent::KeyList
@@ -147,7 +148,7 @@ Torrent::getExtraStatKeys()
   static KeyList keys;
 
   if (keys.isEmpty())
-    keys << buildKeyList(STAT_EXTRA) << TR_KEY_fileStats;
+    keys << buildKeyList(STAT_EXTRA) << TR_KEY_file_stats_camel_APICOMPAT;
 
   return keys;
 }
@@ -238,16 +239,16 @@ Torrent::setSize (int i, qulonglong value)
 }
 
 bool
-Torrent::setString (int i, const char * value)
+Torrent::setString (int i, const QString& value)
 {
   bool changed = false;
 
   assert (0<=i && i<PROPERTY_COUNT);
   assert (myProperties[i].type == QVariant::String);
 
-  if (myValues[i].isNull() || myValues[i].toString() != QString::fromUtf8 (value))
+  if (myValues[i].isNull() || myValues[i].toString() != value)
     {
-      myValues[i].setValue (QString::fromUtf8 (value));
+      myValues[i].setValue (value);
       changed = true;
     }
 
@@ -502,9 +503,9 @@ Torrent::update (tr_variant * d)
             }
           case QVariant::String:
             {
-              const char * val;
-              if (tr_variantGetStr(child, &val, NULL))
-                changed |= setString (property_index, val);
+              std::string_view val;
+              if (tr_variantGetStrView (child, &val))
+                changed |= setString (property_index, QString::fromUtf8 (val.data (), static_cast<int> (val.size ())));
               break;
             }
           case QVariant::ULongLong:
@@ -535,7 +536,7 @@ Torrent::update (tr_variant * d)
             break;
 
           default:
-            std::cerr << __FILE__ << ':' << __LINE__ << "unhandled type: " << tr_quark_get_string(key,NULL) << std::endl;
+            std::cerr << __FILE__ << ':' << __LINE__ << "unhandled type: " << tr_quark_get_string_view (key) << std::endl;
             assert (0 && "unhandled type");
         }
     }
@@ -544,7 +545,7 @@ Torrent::update (tr_variant * d)
 
   if (tr_variantDictFindList (d, TR_KEY_files, &files))
     {
-      const char * str;
+      std::string_view str;
       int64_t intVal;
       int i = 0;
       tr_variant * child;
@@ -555,11 +556,10 @@ Torrent::update (tr_variant * d)
       while ((child = tr_variantListChild (files, i)))
         {
           TorrentFile file;
-          size_t len;
           file.index = i++;
 
-          if (tr_variantDictFindStr(child, TR_KEY_name, &str, &len))
-            file.filename = QString::fromUtf8 (str, len);
+          if (tr_variantDictFindStrView (child, TR_KEY_name, &str))
+            file.filename = QString::fromUtf8 (str.data (), static_cast<int> (str.size ()));
           if (tr_variantDictFindInt (child, TR_KEY_length, &intVal))
             file.size = intVal;
 
@@ -570,7 +570,7 @@ Torrent::update (tr_variant * d)
       changed = true;
     }
 
-  if (tr_variantDictFindList (d, TR_KEY_fileStats, &files))
+  if (tr_variantDictFindList (d, TR_KEY_file_stats_camel_APICOMPAT, &files))
     {
       const int n = tr_variantListSize (files);
 
@@ -581,7 +581,7 @@ Torrent::update (tr_variant * d)
           tr_variant * child = tr_variantListChild (files, i);
           TorrentFile& file (myFiles[i]);
 
-          if (tr_variantDictFindInt (child, TR_KEY_bytesCompleted, &intVal))
+          if (tr_variantDictFindInt (child, TR_KEY_bytes_completed_camel_APICOMPAT, &intVal))
             file.have = intVal;
           if (tr_variantDictFindBool (child, TR_KEY_wanted, &boolVal))
             file.wanted = boolVal;
@@ -594,18 +594,18 @@ Torrent::update (tr_variant * d)
   tr_variant * trackers;
   if (tr_variantDictFindList (d, TR_KEY_trackers, &trackers))
     {
-      size_t len;
-      const char * str;
+      std::string_view str;
       int i = 0;
       QStringList list;
       tr_variant * child;
 
       while ((child = tr_variantListChild (trackers, i++)))
         {
-          if (tr_variantDictFindStr(child, TR_KEY_announce, &str, &len))
+          if (tr_variantDictFindStrView (child, TR_KEY_announce, &str))
             {
-              qApp->faviconCache ().add (QUrl(QString::fromUtf8(str)));
-              list.append (QString::fromUtf8 (str, len));
+              const QString announce = QString::fromUtf8 (str.data (), static_cast<int> (str.size ()));
+              qApp->faviconCache ().add (QUrl (announce));
+              list.append (announce);
             }
         }
 
@@ -627,7 +627,7 @@ Torrent::update (tr_variant * d)
     }
 
   tr_variant * trackerStats;
-  if (tr_variantDictFindList (d, TR_KEY_trackerStats, &trackerStats))
+  if (tr_variantDictFindList (d, TR_KEY_tracker_stats_camel_APICOMPAT, &trackerStats))
     {
       tr_variant * child;
       TrackerStatsList  trackerStatsList;
@@ -637,61 +637,60 @@ Torrent::update (tr_variant * d)
         {
           bool b;
           int64_t i;
-          size_t len;
-          const char * str;
+          std::string_view str;
           TrackerStat trackerStat;
 
-          if (tr_variantDictFindStr(child, TR_KEY_announce, &str, &len))
+          if (tr_variantDictFindStrView (child, TR_KEY_announce, &str))
             {
-              trackerStat.announce = QString::fromUtf8 (str, len);
+              trackerStat.announce = QString::fromUtf8 (str.data (), static_cast<int> (str.size ()));
               qApp->faviconCache ().add (QUrl (trackerStat.announce));
             }
 
-          if (tr_variantDictFindInt (child, TR_KEY_announceState, &i))
+          if (tr_variantDictFindInt (child, TR_KEY_announce_state_camel_APICOMPAT, &i))
             trackerStat.announceState = i;
-          if (tr_variantDictFindInt (child, TR_KEY_downloadCount, &i))
+          if (tr_variantDictFindInt (child, TR_KEY_download_count_camel_APICOMPAT, &i))
             trackerStat.downloadCount = i;
-          if (tr_variantDictFindBool (child, TR_KEY_hasAnnounced, &b))
+          if (tr_variantDictFindBool (child, TR_KEY_has_announced_camel_APICOMPAT, &b))
             trackerStat.hasAnnounced = b;
-          if (tr_variantDictFindBool (child, TR_KEY_hasScraped, &b))
+          if (tr_variantDictFindBool (child, TR_KEY_has_scraped_camel_APICOMPAT, &b))
             trackerStat.hasScraped = b;
-          if (tr_variantDictFindStr(child, TR_KEY_host, &str, &len))
-            trackerStat.host = QString::fromUtf8 (str, len);
+          if (tr_variantDictFindStrView (child, TR_KEY_host, &str))
+            trackerStat.host = QString::fromUtf8 (str.data (), static_cast<int> (str.size ()));
           if (tr_variantDictFindInt (child, TR_KEY_id, &i))
             trackerStat.id = i;
-          if (tr_variantDictFindBool (child, TR_KEY_isBackup, &b))
+          if (tr_variantDictFindBool (child, TR_KEY_is_backup_camel_APICOMPAT, &b))
             trackerStat.isBackup = b;
-          if (tr_variantDictFindInt (child, TR_KEY_lastAnnouncePeerCount, &i))
+          if (tr_variantDictFindInt (child, TR_KEY_last_announce_peer_count_camel_APICOMPAT, &i))
             trackerStat.lastAnnouncePeerCount = i;
-          if (tr_variantDictFindStr(child, TR_KEY_lastAnnounceResult, &str, &len))
-            trackerStat.lastAnnounceResult = QString::fromUtf8(str, len);
-          if (tr_variantDictFindInt (child, TR_KEY_lastAnnounceStartTime, &i))
+          if (tr_variantDictFindStrView (child, TR_KEY_last_announce_result_camel_APICOMPAT, &str))
+            trackerStat.lastAnnounceResult = QString::fromUtf8 (str.data (), static_cast<int> (str.size ()));
+          if (tr_variantDictFindInt (child, TR_KEY_last_announce_start_time_camel_APICOMPAT, &i))
             trackerStat.lastAnnounceStartTime = i;
-          if (tr_variantDictFindBool (child, TR_KEY_lastAnnounceSucceeded, &b))
+          if (tr_variantDictFindBool (child, TR_KEY_last_announce_succeeded_camel_APICOMPAT, &b))
             trackerStat.lastAnnounceSucceeded = b;
-          if (tr_variantDictFindInt (child, TR_KEY_lastAnnounceTime, &i))
+          if (tr_variantDictFindInt (child, TR_KEY_last_announce_time_camel_APICOMPAT, &i))
             trackerStat.lastAnnounceTime = i;
-          if (tr_variantDictFindBool (child, TR_KEY_lastAnnounceTimedOut, &b))
+          if (tr_variantDictFindBool (child, TR_KEY_last_announce_timed_out_camel_APICOMPAT, &b))
             trackerStat.lastAnnounceTimedOut = b;
-          if (tr_variantDictFindStr(child, TR_KEY_lastScrapeResult, &str, &len))
-            trackerStat.lastScrapeResult = QString::fromUtf8 (str, len);
-          if (tr_variantDictFindInt (child, TR_KEY_lastScrapeStartTime, &i))
+          if (tr_variantDictFindStrView (child, TR_KEY_last_scrape_result_camel_APICOMPAT, &str))
+            trackerStat.lastScrapeResult = QString::fromUtf8 (str.data (), static_cast<int> (str.size ()));
+          if (tr_variantDictFindInt (child, TR_KEY_last_scrape_start_time_camel_APICOMPAT, &i))
             trackerStat.lastScrapeStartTime = i;
-          if (tr_variantDictFindBool (child, TR_KEY_lastScrapeSucceeded, &b))
+          if (tr_variantDictFindBool (child, TR_KEY_last_scrape_succeeded_camel_APICOMPAT, &b))
             trackerStat.lastScrapeSucceeded = b;
-          if (tr_variantDictFindInt (child, TR_KEY_lastScrapeTime, &i))
+          if (tr_variantDictFindInt (child, TR_KEY_last_scrape_time_camel_APICOMPAT, &i))
             trackerStat.lastScrapeTime = i;
-          if (tr_variantDictFindBool (child, TR_KEY_lastScrapeTimedOut, &b))
+          if (tr_variantDictFindBool (child, TR_KEY_last_scrape_timed_out_camel_APICOMPAT, &b))
             trackerStat.lastScrapeTimedOut = b;
-          if (tr_variantDictFindInt (child, TR_KEY_leecherCount, &i))
+          if (tr_variantDictFindInt (child, TR_KEY_leecher_count_camel_APICOMPAT, &i))
             trackerStat.leecherCount = i;
-          if (tr_variantDictFindInt (child, TR_KEY_nextAnnounceTime, &i))
+          if (tr_variantDictFindInt (child, TR_KEY_next_announce_time_camel_APICOMPAT, &i))
             trackerStat.nextAnnounceTime = i;
-          if (tr_variantDictFindInt (child, TR_KEY_nextScrapeTime, &i))
+          if (tr_variantDictFindInt (child, TR_KEY_next_scrape_time_camel_APICOMPAT, &i))
             trackerStat.nextScrapeTime = i;
-          if (tr_variantDictFindInt (child, TR_KEY_scrapeState, &i))
+          if (tr_variantDictFindInt (child, TR_KEY_scrape_state_camel_APICOMPAT, &i))
             trackerStat.scrapeState = i;
-          if (tr_variantDictFindInt (child, TR_KEY_seederCount, &i))
+          if (tr_variantDictFindInt (child, TR_KEY_seeder_count_camel_APICOMPAT, &i))
             trackerStat.seederCount = i;
           if (tr_variantDictFindInt (child, TR_KEY_tier, &i))
             trackerStat.tier = i;
@@ -714,39 +713,38 @@ Torrent::update (tr_variant * d)
           double d;
           bool b;
           int64_t i;
-          size_t len;
-          const char * str;
+          std::string_view str;
           Peer peer;
 
-          if (tr_variantDictFindStr(child, TR_KEY_address, &str, &len))
-            peer.address = QString::fromUtf8 (str, len);
-          if (tr_variantDictFindStr(child, TR_KEY_clientName, &str, &len))
-            peer.clientName = QString::fromUtf8 (str, len);
-          if (tr_variantDictFindBool (child, TR_KEY_clientIsChoked, &b))
+          if (tr_variantDictFindStrView (child, TR_KEY_address, &str))
+            peer.address = QString::fromUtf8 (str.data (), static_cast<int> (str.size ()));
+          if (tr_variantDictFindStrView (child, TR_KEY_client_name_camel_APICOMPAT, &str))
+            peer.clientName = QString::fromUtf8 (str.data (), static_cast<int> (str.size ()));
+          if (tr_variantDictFindBool (child, TR_KEY_client_is_choked_camel_APICOMPAT, &b))
             peer.clientIsChoked = b;
-          if (tr_variantDictFindBool (child, TR_KEY_clientIsInterested, &b))
+          if (tr_variantDictFindBool (child, TR_KEY_client_is_interested_camel_APICOMPAT, &b))
             peer.clientIsInterested = b;
-          if (tr_variantDictFindStr(child, TR_KEY_flagStr, &str, &len))
-            peer.flagStr = QString::fromUtf8 (str, len);
-          if (tr_variantDictFindBool (child, TR_KEY_isDownloadingFrom, &b))
+          if (tr_variantDictFindStrView (child, TR_KEY_flag_str_camel_APICOMPAT, &str))
+            peer.flagStr = QString::fromUtf8 (str.data (), static_cast<int> (str.size ()));
+          if (tr_variantDictFindBool (child, TR_KEY_is_downloading_from_camel_APICOMPAT, &b))
             peer.isDownloadingFrom = b;
-          if (tr_variantDictFindBool (child, TR_KEY_isEncrypted, &b))
+          if (tr_variantDictFindBool (child, TR_KEY_is_encrypted_camel_APICOMPAT, &b))
             peer.isEncrypted = b;
-          if (tr_variantDictFindBool (child, TR_KEY_isIncoming, &b))
+          if (tr_variantDictFindBool (child, TR_KEY_is_incoming_camel_APICOMPAT, &b))
             peer.isIncoming = b;
-          if (tr_variantDictFindBool (child, TR_KEY_isUploadingTo, &b))
+          if (tr_variantDictFindBool (child, TR_KEY_is_uploading_to_camel_APICOMPAT, &b))
             peer.isUploadingTo = b;
-          if (tr_variantDictFindBool (child, TR_KEY_peerIsChoked, &b))
+          if (tr_variantDictFindBool (child, TR_KEY_peer_is_choked_camel_APICOMPAT, &b))
             peer.peerIsChoked = b;
-          if (tr_variantDictFindBool (child, TR_KEY_peerIsInterested, &b))
+          if (tr_variantDictFindBool (child, TR_KEY_peer_is_interested_camel_APICOMPAT, &b))
             peer.peerIsInterested = b;
           if (tr_variantDictFindInt (child, TR_KEY_port, &i))
             peer.port = i;
           if (tr_variantDictFindReal (child, TR_KEY_progress, &d))
             peer.progress = d;
-          if (tr_variantDictFindInt (child, TR_KEY_rateToClient, &i))
+          if (tr_variantDictFindInt (child, TR_KEY_rate_to_client_camel_APICOMPAT, &i))
             peer.rateToClient = Speed::fromBps (i);
-          if (tr_variantDictFindInt (child, TR_KEY_rateToPeer, &i))
+          if (tr_variantDictFindInt (child, TR_KEY_rate_to_peer_camel_APICOMPAT, &i))
             peer.rateToPeer = Speed::fromBps (i);
           peerList << peer;
         }

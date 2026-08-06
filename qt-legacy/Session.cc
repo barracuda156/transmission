@@ -7,8 +7,10 @@
  * $Id$
  */
 
+#include <algorithm>
 #include <cassert>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -60,6 +62,27 @@ namespace
 
 namespace
 {
+  // This client speaks the legacy RPC protocol, which dash-cases
+  // multi-word session keys ("alt-speed-up"). The primary quarks are
+  // underscore-cased and serve settings.json, while api-compat alias
+  // quarks keep the legacy spellings; session traffic must use the
+  // latter so that responses (which the server renders in legacy form)
+  // match, and so that older remote daemons still understand requests.
+  tr_quark
+  legacySessionKey (tr_quark const q)
+  {
+    const std::string_view sv = tr_quark_get_string_view (q);
+    if (sv.find ('_') == std::string_view::npos)
+      return q;
+
+    std::string kebab (sv);
+    std::replace (kebab.begin (), kebab.end (), '_', '-');
+    if (const std::optional<tr_quark> found = tr_quark_lookup (kebab))
+      return *found;
+
+    return q;
+  }
+
   typedef Torrent::KeyList KeyList;
   const KeyList& getInfoKeys () { return Torrent::getInfoKeys (); }
   const KeyList& getStatKeys () { return Torrent::getStatKeys (); }
@@ -88,7 +111,7 @@ FileAdded::executed (int64_t tag, const QString& result, tr_variant * arguments)
     {
       tr_variant * dup;
       std::string_view str;
-      if (tr_variantDictFindDict (arguments, TR_KEY_torrent_duplicate, &dup) &&
+      if (tr_variantDictFindDict (arguments, TR_KEY_torrent_duplicate_kebab_APICOMPAT, &dup) &&
           tr_variantDictFindStrView (dup, TR_KEY_name, &str))
         {
           const QString myFilename = QFileInfo (myName).fileName ();
@@ -128,14 +151,16 @@ FileAdded::executed (int64_t tag, const QString& result, tr_variant * arguments)
 void
 Session::sessionSet (const tr_quark key, const QVariant& value)
 {
+  const tr_quark rpcKey = legacySessionKey (key);
+
   tr_variant args;
   tr_variantInitDict (&args, 1);
   switch (value.type ())
     {
-      case QVariant::Bool:   tr_variantDictAddBool (&args, key, value.toBool ()); break;
-      case QVariant::Int:    tr_variantDictAddInt (&args, key, value.toInt ()); break;
-      case QVariant::Double: tr_variantDictAddReal (&args, key, value.toDouble ()); break;
-      case QVariant::String: tr_variantDictAddStr (&args, key, value.toString ().toUtf8 ().constData ()); break;
+      case QVariant::Bool:   tr_variantDictAddBool (&args, rpcKey, value.toBool ()); break;
+      case QVariant::Int:    tr_variantDictAddInt (&args, rpcKey, value.toInt ()); break;
+      case QVariant::Double: tr_variantDictAddReal (&args, rpcKey, value.toDouble ()); break;
+      case QVariant::String: tr_variantDictAddStr (&args, rpcKey, value.toString ().toUtf8 ().constData ()); break;
       default:               assert ("unknown type");
     }
 
@@ -156,7 +181,7 @@ Session::copyMagnetLinkToClipboard (int torrentId)
   tr_variantListAddInt (tr_variantDictAddList (&args, TR_KEY_ids, 1), torrentId);
   tr_variantListAddStr (tr_variantDictAddList (&args, TR_KEY_fields, 1), "magnetLink");
 
-  exec (TR_KEY_torrent_get, &args, TAG_MAGNET_LINK);
+  exec (TR_KEY_torrent_get_kebab, &args, TAG_MAGNET_LINK);
 }
 
 void
@@ -209,10 +234,10 @@ Session::updatePref (int key)
         break;
 
       case Prefs::RATIO:
-        sessionSet (TR_KEY_seedRatioLimit, myPrefs.variant (key));
+        sessionSet (TR_KEY_seed_ratio_limit_camel_APICOMPAT, myPrefs.variant (key));
         break;
       case Prefs::RATIO_ENABLED:
-        sessionSet (TR_KEY_seedRatioLimited, myPrefs.variant (key));
+        sessionSet (TR_KEY_seed_ratio_limited_camel_APICOMPAT, myPrefs.variant (key));
         break;
 
       case Prefs::ENCRYPTION:
@@ -403,7 +428,7 @@ Session::torrentSet (const QSet<int>& ids, const tr_quark key, double value)
   tr_variantDictAddReal (&args, key, value);
   addOptionalIds (&args, ids);
 
-  exec (TR_KEY_torrent_set, &args);
+  exec (TR_KEY_torrent_set_kebab_APICOMPAT, &args);
 }
 
 void
@@ -414,7 +439,7 @@ Session::torrentSet (const QSet<int>& ids, const tr_quark key, int value)
   tr_variantDictAddInt (&args, key, value);
   addOptionalIds (&args, ids);
 
-  exec (TR_KEY_torrent_set, &args);
+  exec (TR_KEY_torrent_set_kebab_APICOMPAT, &args);
 }
 
 void
@@ -425,7 +450,7 @@ Session::torrentSet (const QSet<int>& ids, const tr_quark key, bool value)
   tr_variantDictAddBool (&args, key, value);
   addOptionalIds (&args, ids);
 
-  exec (TR_KEY_torrent_set, &args);
+  exec (TR_KEY_torrent_set_kebab_APICOMPAT, &args);
 }
 
 void
@@ -438,7 +463,7 @@ Session::torrentSet (const QSet<int>& ids, const tr_quark key, const QStringList
   for (const QString& str: value)
     tr_variantListAddStr (list, str.toUtf8 ().constData ());
 
-  exec(TR_KEY_torrent_set, &args);
+  exec(TR_KEY_torrent_set_kebab_APICOMPAT, &args);
 }
 
 void
@@ -451,7 +476,7 @@ Session::torrentSet (const QSet<int>& ids, const tr_quark key, const QList<int>&
   for (const int i: value)
     tr_variantListAddInt (list, i);
 
-  exec (TR_KEY_torrent_set, &args);
+  exec (TR_KEY_torrent_set_kebab_APICOMPAT, &args);
 }
 
 void
@@ -464,7 +489,7 @@ Session::torrentSet (const QSet<int>& ids, const tr_quark key, const QPair<int,Q
   tr_variantListAddInt (list, value.first);
   tr_variantListAddStr (list, value.second.toUtf8 ().constData ());
 
-  exec (TR_KEY_torrent_set, &args);
+  exec (TR_KEY_torrent_set_kebab_APICOMPAT, &args);
 }
 
 void
@@ -476,7 +501,7 @@ Session::torrentSetLocation (const QSet<int>& ids, const QString& location, bool
   tr_variantDictAddStr (&args, TR_KEY_location, location.toUtf8 ().constData ());
   tr_variantDictAddBool (&args, TR_KEY_move, doMove);
 
-  exec (TR_KEY_torrent_set_location, &args);
+  exec (TR_KEY_torrent_set_location_kebab_APICOMPAT, &args);
 }
 
 void
@@ -505,7 +530,7 @@ Session::refreshTorrents (const QSet<int>& ids)
       addList (tr_variantDictAddList (&args, TR_KEY_fields, 0), getStatKeys ());
       addOptionalIds (&args, ids);
 
-      exec (TR_KEY_torrent_get, &args, TAG_SOME_TORRENTS);
+      exec (TR_KEY_torrent_get_kebab, &args, TAG_SOME_TORRENTS);
     }
 }
 
@@ -517,7 +542,7 @@ Session::refreshExtraStats (const QSet<int>& ids)
   addOptionalIds (&args, ids);
   addList (tr_variantDictAddList (&args, TR_KEY_fields, 0), getStatKeys () + getExtraStatKeys ());
 
-  exec (TR_KEY_torrent_get, &args, TAG_SOME_TORRENTS);
+  exec (TR_KEY_torrent_get_kebab, &args, TAG_SOME_TORRENTS);
 }
 
 void
@@ -548,7 +573,7 @@ Session::refreshActiveTorrents ()
   tr_variantDictAddStr (&args, TR_KEY_ids, "recently-active");
   addList (tr_variantDictAddList (&args, TR_KEY_fields, 0), getStatKeys ());
 
-  exec (TR_KEY_torrent_get, &args, TAG_SOME_TORRENTS);
+  exec (TR_KEY_torrent_get_kebab, &args, TAG_SOME_TORRENTS);
 }
 
 void
@@ -558,7 +583,7 @@ Session::refreshAllTorrents ()
   tr_variantInitDict (&args, 1);
   addList (tr_variantDictAddList (&args, TR_KEY_fields, 0), getStatKeys ());
 
-  exec (TR_KEY_torrent_get, &args, TAG_ALL_TORRENTS);
+  exec (TR_KEY_torrent_get_kebab, &args, TAG_ALL_TORRENTS);
 }
 
 void
@@ -643,7 +668,7 @@ Session::responseReceived (int64_t tag, const QString& result, tr_variant * args
           int64_t intVal = 0;
           if (args != nullptr)
             {
-              if (tr_variantDictFindInt (args, TR_KEY_blocklist_size, &intVal))
+              if (tr_variantDictFindInt (args, TR_KEY_blocklist_size_kebab_APICOMPAT, &intVal))
                 setBlocklistSize (intVal);
             }
           break;
@@ -672,7 +697,7 @@ Session::responseReceived (int64_t tag, const QString& result, tr_variant * args
               tr_variantInitDict (&args, 2);
               tr_variantDictAddInt (&args, TR_KEY_ids, id);
               addList (tr_variantDictAddList (&args, TR_KEY_fields, 0),
-                       KeyList () << TR_KEY_fileStats << TR_KEY_files << TR_KEY_id << TR_KEY_name);
+                       KeyList () << TR_KEY_file_stats_camel_APICOMPAT << TR_KEY_files << TR_KEY_id << TR_KEY_name);
               exec ("torrent-get", &args, TAG_SOME_TORRENTS);
             }
 
@@ -683,7 +708,7 @@ Session::responseReceived (int64_t tag, const QString& result, tr_variant * args
         {
           bool isOpen;
           if (args == nullptr ||
-              !tr_variantDictFindBool (args, TR_KEY_port_is_open, &isOpen))
+              !tr_variantDictFindBool (args, TR_KEY_port_is_open_kebab_APICOMPAT, &isOpen))
             isOpen = false;
           emit portTested (isOpen);
           break;
@@ -697,7 +722,7 @@ Session::responseReceived (int64_t tag, const QString& result, tr_variant * args
           if (args != nullptr
               && tr_variantDictFindList (args, TR_KEY_torrents, &torrents)
               && ( (child = tr_variantListChild (torrents, 0)))
-              && tr_variantDictFindStrView (child, TR_KEY_magnetLink, &str))
+              && tr_variantDictFindStrView (child, TR_KEY_magnet_link_camel_APICOMPAT, &str))
             qApp->clipboard ()->setText (QString::fromUtf8 (str.data (), static_cast<int> (str.size ())));
           break;
         }
@@ -725,15 +750,15 @@ Session::updateStats (tr_variant * d, tr_session_stats * stats)
 {
   int64_t i;
 
-  if (tr_variantDictFindInt (d, TR_KEY_uploadedBytes, &i))
+  if (tr_variantDictFindInt (d, TR_KEY_uploaded_bytes_camel_APICOMPAT, &i))
     stats->uploadedBytes = i;
-  if (tr_variantDictFindInt (d, TR_KEY_downloadedBytes, &i))
+  if (tr_variantDictFindInt (d, TR_KEY_downloaded_bytes_camel_APICOMPAT, &i))
     stats->downloadedBytes = i;
-  if (tr_variantDictFindInt (d, TR_KEY_filesAdded, &i))
+  if (tr_variantDictFindInt (d, TR_KEY_files_added_camel_APICOMPAT, &i))
     stats->filesAdded = i;
-  if (tr_variantDictFindInt (d, TR_KEY_sessionCount, &i))
+  if (tr_variantDictFindInt (d, TR_KEY_session_count_camel_APICOMPAT, &i))
     stats->sessionCount = i;
-  if (tr_variantDictFindInt (d, TR_KEY_secondsActive, &i))
+  if (tr_variantDictFindInt (d, TR_KEY_seconds_active_camel_APICOMPAT, &i))
     stats->secondsActive = i;
 
   stats->ratio = tr_getRatio (stats->uploadedBytes, stats->downloadedBytes);
@@ -744,10 +769,10 @@ Session::updateStats (tr_variant * d)
 {
   tr_variant * c;
 
-  if (tr_variantDictFindDict (d, TR_KEY_current_stats, &c))
+  if (tr_variantDictFindDict (d, TR_KEY_current_stats_kebab_APICOMPAT, &c))
     updateStats (c, &myStats);
 
-  if (tr_variantDictFindDict (d, TR_KEY_cumulative_stats, &c))
+  if (tr_variantDictFindDict (d, TR_KEY_cumulative_stats_kebab_APICOMPAT, &c))
     updateStats (c, &myCumulativeStats);
 
   emit statsUpdated ();
@@ -763,7 +788,7 @@ Session::updateInfo (tr_variant * d)
 
   for (int i=Prefs::FIRST_CORE_PREF; i<=Prefs::LAST_CORE_PREF; ++i)
     {
-      const tr_variant * b (tr_variantDictFind (d, myPrefs.getKey (i)));
+      const tr_variant * b (tr_variantDictFind (d, legacySessionKey (myPrefs.getKey (i))));
 
       if (!b)
         continue;
@@ -822,9 +847,9 @@ Session::updateInfo (tr_variant * d)
 
   bool b;
   double x;
-  if (tr_variantDictFindBool (d, TR_KEY_seedRatioLimited, &b))
+  if (tr_variantDictFindBool (d, TR_KEY_seed_ratio_limited_camel_APICOMPAT, &b))
     myPrefs.set (Prefs::RATIO_ENABLED, b);
-  if (tr_variantDictFindReal (d, TR_KEY_seedRatioLimit, &x))
+  if (tr_variantDictFindReal (d, TR_KEY_seed_ratio_limit_camel_APICOMPAT, &x))
     myPrefs.set (Prefs::RATIO, x);
 
   /* Use the C API to get settings that, for security reasons, aren't supported by RPC */
@@ -839,7 +864,7 @@ Session::updateInfo (tr_variant * d)
       myPrefs.set (Prefs::RPC_WHITELIST,         QString::fromUtf8 (tr_sessionGetRPCWhitelist (mySession)));
     }
 
-  if (tr_variantDictFindInt (d, TR_KEY_blocklist_size, &i) && i!=blocklistSize ())
+  if (tr_variantDictFindInt (d, TR_KEY_blocklist_size_kebab_APICOMPAT, &i) && i!=blocklistSize ())
     setBlocklistSize (i);
 
   if (tr_variantDictFindStrView (d, TR_KEY_version, &str))
@@ -923,7 +948,7 @@ Session::addNewlyCreatedTorrent (const QString& filename, const QString& localPa
 
   tr_variant args;
   tr_variantInitDict (&args, 3);
-  tr_variantDictAddStr (&args, TR_KEY_download_dir, localPath.toUtf8 ().constData ());
+  tr_variantDictAddStr (&args, TR_KEY_download_dir_kebab_APICOMPAT, localPath.toUtf8 ().constData ());
   tr_variantDictAddBool (&args, TR_KEY_paused, !myPrefs.getBool (Prefs::START));
   tr_variantDictAddRaw (&args, TR_KEY_metainfo, b64.constData (), b64.size ());
 
@@ -938,7 +963,7 @@ Session::removeTorrents (const QSet<int>& ids, bool deleteFiles)
       tr_variant args;
       tr_variantInitDict (&args, 2);
       addOptionalIds (&args, ids);
-      tr_variantDictAddInt (&args, TR_KEY_delete_local_data, deleteFiles);
+      tr_variantDictAddInt (&args, TR_KEY_delete_local_data_kebab_APICOMPAT, deleteFiles);
 
       exec ("torrent-remove", &args);
     }

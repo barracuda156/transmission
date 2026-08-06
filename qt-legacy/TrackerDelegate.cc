@@ -7,6 +7,9 @@
  * $Id$
  */
 
+#include <optional>
+#include <string_view>
+
 #include <QAbstractTextDocumentLayout>
 #include <QApplication>
 #include <QPainter>
@@ -14,7 +17,7 @@
 #include <QTextDocument>
 
 #include <libtransmission/transmission.h>
-#include <libtransmission/utils.h>
+#include <libtransmission/web-utils.h>
 
 #include "FaviconCache.h"
 #include "Formatter.h"
@@ -191,11 +194,15 @@ TrackerDelegate::getText (const TrackerInfo& inf) const
 
   // hostname
   str += inf.st.isBackup ? QLatin1String ("<i>") : QLatin1String ("<b>");
-  char * host = NULL;
+  const QByteArray announce = inf.st.announce.toUtf8 ();
+  QString host;
   int port = 0;
-  tr_urlParse (inf.st.announce.toUtf8().constData(), TR_BAD_SIZE, NULL, &host, &port, NULL);
-  str += QString::fromLatin1 ("%1:%2").arg (QString::fromUtf8 (host)).arg (port);
-  tr_free (host);
+  if (const std::optional<tr_url_parsed_t> url = tr_urlParse (std::string_view (announce.constData (), static_cast<size_t> (announce.size ()))))
+    {
+      host = QString::fromUtf8 (url->host.data (), static_cast<int> (url->host.size ()));
+      port = url->port;
+    }
+  str += QString::fromLatin1 ("%1:%2").arg (host).arg (port);
   if (!key.isEmpty()) str += QLatin1String (" - ") + key;
   str += inf.st.isBackup ? QLatin1String ("</i>") : QLatin1String ("</b>");
 

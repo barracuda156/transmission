@@ -234,7 +234,7 @@ OptionsDialog::onAccepted ()
   else
     downloadDir = ui.destinationEdit->text ();
 
-  tr_variantDictAddStr (&args, TR_KEY_download_dir, downloadDir.toUtf8 ().constData ());
+  tr_variantDictAddStr (&args, TR_KEY_download_dir_kebab_APICOMPAT, downloadDir.toUtf8 ().constData ());
 
   // paused
   tr_variantDictAddBool (&args, TR_KEY_paused, !ui.startCheck->isChecked ());
@@ -242,13 +242,13 @@ OptionsDialog::onAccepted ()
   // priority
   const int index = ui.priorityCombo->currentIndex ();
   const int priority = ui.priorityCombo->itemData (index).toInt ();
-  tr_variantDictAddInt (&args, TR_KEY_bandwidthPriority, priority);
+  tr_variantDictAddInt (&args, TR_KEY_bandwidth_priority_camel_APICOMPAT, priority);
 
   // files-unwanted
   int count = myWanted.count (false);
   if (count > 0)
     {
-      tr_variant * l = tr_variantDictAddList (&args, TR_KEY_files_unwanted, count);
+      tr_variant * l = tr_variantDictAddList (&args, TR_KEY_files_unwanted_kebab_APICOMPAT, count);
       for (int i = 0, n = myWanted.size (); i < n; ++i)
         {
           if (myWanted.at (i) == false)
@@ -260,7 +260,7 @@ OptionsDialog::onAccepted ()
   count = myPriorities.count (TR_PRI_LOW);
   if (count > 0)
     {
-      tr_variant * l = tr_variantDictAddList (&args, TR_KEY_priority_low, count);
+      tr_variant * l = tr_variantDictAddList (&args, TR_KEY_priority_low_kebab_APICOMPAT, count);
       for (int i = 0, n = myPriorities.size (); i < n; ++i)
         {
           if (myPriorities.at (i) == TR_PRI_LOW)
@@ -272,7 +272,7 @@ OptionsDialog::onAccepted ()
   count = myPriorities.count (TR_PRI_HIGH);
   if (count > 0)
     {
-      tr_variant * l = tr_variantDictAddList (&args, TR_KEY_priority_high, count);
+      tr_variant * l = tr_variantDictAddList (&args, TR_KEY_priority_high_kebab_APICOMPAT, count);
       for (int i = 0, n = myPriorities.size (); i < n; ++i)
         {
           if (myPriorities.at (i) == TR_PRI_HIGH)
