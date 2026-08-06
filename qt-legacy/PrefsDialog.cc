@@ -20,6 +20,7 @@
 #include <QCoreApplication>
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
+#include <QEvent>
 #include <QFileIconProvider>
 #include <QFileInfo>
 #include <QHBoxLayout>
@@ -28,6 +29,7 @@
 #include <QLineEdit>
 #include <QList>
 #include <QMessageBox>
+#include <QPlainTextEdit>
 #include <QPushButton>
 #include <QSpinBox>
 #include <QStyle>
@@ -129,6 +131,8 @@ PrefsDialog::updateWidgetValue (QWidget * widget, int prefKey)
     w->setTime (QTime (0, 0).addSecs (myPrefs.getInt(prefKey) * 60));
   else if (auto w = qobject_cast<QLineEdit*> (widget))
     w->setText (myPrefs.getString (prefKey));
+  else if (auto w = qobject_cast<QPlainTextEdit*> (widget))
+    w->setPlainText (myPrefs.getString (prefKey));
   else if (auto w = qobject_cast<PathButton*> (widget))
     w->setPath (myPrefs.getString (prefKey));
   else
@@ -150,10 +154,31 @@ PrefsDialog::linkWidgetToPref (QWidget * widget, int prefKey)
     connect (widget, SIGNAL (editingFinished ()), SLOT (timeEditingFinished ()));
   else if (widget->inherits ("QLineEdit"))
     connect (widget, SIGNAL (editingFinished ()), SLOT (lineEditingFinished ()));
+  else if (widget->inherits ("QPlainTextEdit"))
+    widget->installEventFilter (this);
   else if (widget->inherits ("PathButton"))
     connect (widget, SIGNAL (pathChanged (QString)), SLOT (pathChanged (QString)));
   else if (widget->inherits ("QAbstractSpinBox"))
     connect (widget, SIGNAL (editingFinished ()), SLOT (spinBoxEditingFinished ()));
+}
+
+bool
+PrefsDialog::eventFilter (QObject * object, QEvent * event)
+{
+  if (event->type () == QEvent::FocusOut)
+    {
+      if (auto * const w = qobject_cast<QPlainTextEdit*> (object))
+        plainTextEditingFinished (w);
+    }
+
+  return BaseDialog::eventFilter (object, event);
+}
+
+void
+PrefsDialog::plainTextEditingFinished (QWidget * widget)
+{
+  if (auto * const e = qobject_cast<QPlainTextEdit*> (widget))
+    setPref (getPrefKey (e), e->toPlainText ());
 }
 
 void
@@ -344,6 +369,7 @@ PrefsDialog::initNetworkTab ()
   linkWidgetToPref (ui.enablePexCheck, Prefs::PEX_ENABLED);
   linkWidgetToPref (ui.enableDhtCheck, Prefs::DHT_ENABLED);
   linkWidgetToPref (ui.enableLpdCheck, Prefs::LPD_ENABLED);
+  linkWidgetToPref (ui.defaultTrackersPlainTextEdit, Prefs::DEFAULT_TRACKERS);
 
   ColumnResizer * cr (new ColumnResizer (this));
   cr->addLayout (ui.incomingPeersSectionLayout);
@@ -446,10 +472,25 @@ PrefsDialog::onIdleLimitChanged ()
 void
 PrefsDialog::initSeedingTab ()
 {
+  if (mySession.isLocal ())
+    {
+      ui.doneSeedingScriptStack->setCurrentWidget (ui.doneSeedingScriptButton);
+      ui.doneSeedingScriptButton->setMode (PathButton::FileMode);
+      ui.doneSeedingScriptButton->setTitle (tr ("Select \"Torrent Done Seeding\" Script"));
+    }
+  else
+    {
+      ui.doneSeedingScriptStack->setCurrentWidget (ui.doneSeedingScriptEdit);
+    }
+
+  ui.doneSeedingScriptStack->setFixedHeight (ui.doneSeedingScriptStack->currentWidget ()->sizeHint ().height ());
+
   linkWidgetToPref (ui.ratioLimitCheck, Prefs::RATIO_ENABLED);
   linkWidgetToPref (ui.ratioLimitSpin, Prefs::RATIO);
   linkWidgetToPref (ui.idleLimitCheck, Prefs::IDLE_LIMIT_ENABLED);
   linkWidgetToPref (ui.idleLimitSpin, Prefs::IDLE_LIMIT);
+  linkWidgetToPref (ui.doneSeedingScriptCheck, Prefs::SCRIPT_TORRENT_DONE_SEEDING_ENABLED);
+  linkWidgetToPref (ui.doneSeedingScriptStack->currentWidget (), Prefs::SCRIPT_TORRENT_DONE_SEEDING_FILENAME);
 
   connect (ui.idleLimitSpin, SIGNAL (valueChanged (int)), SLOT (onIdleLimitChanged ()));
 
@@ -653,6 +694,13 @@ PrefsDialog::refreshPref (int key)
         {
           const QString path (myPrefs.getString (key));
           ui.completionScriptButton->setText (QFileInfo (path).fileName ());
+          break;
+        }
+
+      case Prefs::SCRIPT_TORRENT_DONE_SEEDING_FILENAME:
+        {
+          const QString path (myPrefs.getString (key));
+          ui.doneSeedingScriptButton->setText (QFileInfo (path).fileName ());
           break;
         }
 

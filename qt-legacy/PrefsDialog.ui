@@ -591,6 +591,28 @@
            </property>
           </widget>
          </item>
+         <item row="2" column="0">
+          <widget class="QCheckBox" name="doneSeedingScriptCheck">
+           <property name="text">
+            <string>Call scrip&amp;t when torrent is done seeding:</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QStackedWidget" name="doneSeedingScriptStack">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <widget class="PathButton" name="doneSeedingScriptButton"/>
+           <widget class="QLineEdit" name="doneSeedingScriptEdit"/>
+          </widget>
+         </item>
         </layout>
        </item>
        <item>
@@ -952,6 +974,31 @@
           </widget>
          </item>
         </layout>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="defaultTrackersSection">
+         <property name="title">
+          <string>Default Public Trackers</string>
+         </property>
+         <layout class="QVBoxLayout" name="defaultTrackersSectionLayout">
+          <item>
+           <widget class="QPlainTextEdit" name="defaultTrackersPlainTextEdit">
+            <property name="toolTip">
+             <string>Trackers to use on all public torrents.
+
+To add a backup URL, add it on the next line after a primary URL.
+To add a new primary URL, add it after a blank line.</string>
+            </property>
+            <property name="tabChangesFocus">
+             <bool>true</bool>
+            </property>
+            <property name="lineWrapMode">
+             <enum>QPlainTextEdit::NoWrap</enum>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
        </item>
        <item>
         <spacer name="networkTabBottomSpacer">
