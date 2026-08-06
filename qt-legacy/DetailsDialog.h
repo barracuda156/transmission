@@ -10,6 +10,7 @@
 #ifndef QTR_DETAILS_DIALOG_H
 #define QTR_DETAILS_DIALOG_H
 
+#include <QEvent>
 #include <QString>
 #include <QMap>
 #include <QSet>
@@ -41,6 +42,9 @@ class DetailsDialog: public BaseDialog
 
     // QWidget
     virtual QSize sizeHint () const { return QSize (440, 460); }
+
+    // QObject
+    virtual bool eventFilter (QObject * object, QEvent * event);
 
   private:
     void initPeersTab ();
@@ -84,6 +88,9 @@ class DetailsDialog: public BaseDialog
     void onIdleModeChanged (int);
     void onIdleLimitChanged ();
 
+    // Info tab
+    void onLabelsEdited ();
+
   private:
     Session& mySession;
     Prefs& myPrefs;
@@ -101,6 +108,8 @@ class DetailsDialog: public BaseDialog
     TrackerDelegate * myTrackerDelegate;
 
     QMap<QString, QTreeWidgetItem*> myPeers;
+
+    QString myLabelsBaseline;
 };
 
 #endif // QTR_DETAILS_DIALOG_H
