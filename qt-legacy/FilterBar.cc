@@ -253,6 +253,7 @@ FilterBar::FilterBar (Prefs& prefs, const TorrentModel& torrents, const TorrentF
   connect (&myTorrents, SIGNAL (rowsInserted (QModelIndex, int, int)), this, SLOT (recountSoon ()));
   connect (&myTorrents, SIGNAL (rowsRemoved (QModelIndex, int, int)), this, SLOT (recountSoon ()));
   connect (&myTorrents, SIGNAL (dataChanged (QModelIndex, QModelIndex)), this, SLOT (recountSoon ()));
+  connect (&qApp->faviconCache (), SIGNAL (pixmapReady (QString)), this, SLOT (recountSoon ()));
   connect (myRecountTimer, SIGNAL (timeout ()), this, SLOT (recount ()));
 
   recountSoon ();
