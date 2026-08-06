@@ -124,6 +124,9 @@ qt4_wrap_cpp(${PROJECT_NAME}_MOC_SOURCES ${${PROJECT_NAME}_MOC_HEADERS})
 # MakeDialog.cc declares MakeProgressDialog and includes its own moc output.
 qt4_generate_moc(MakeDialog.cc ${CMAKE_CURRENT_BINARY_DIR}/MakeDialog.moc)
 
+# DetailsDialog.cc declares TrackersDialog and includes its own moc output.
+qt4_generate_moc(DetailsDialog.cc ${CMAKE_CURRENT_BINARY_DIR}/DetailsDialog.moc)
+
 qt4_wrap_ui(${PROJECT_NAME}_UI_SOURCES
     AboutDialog.ui
     DetailsDialog.ui
@@ -135,7 +138,8 @@ qt4_wrap_ui(${PROJECT_NAME}_UI_SOURCES
     PrefsDialog.ui
     RelocateDialog.ui
     SessionDialog.ui
-    StatsDialog.ui)
+    StatsDialog.ui
+    TrackersDialog.ui)
 
 set(${PROJECT_NAME}_QRC_FILES application.qrc)
 if(WIN32 OR APPLE)
@@ -194,6 +198,7 @@ add_executable(${TR_NAME}-qt WIN32
     ${${PROJECT_NAME}_UI_SOURCES}
     ${${PROJECT_NAME}_QRC_SOURCES}
     ${CMAKE_CURRENT_BINARY_DIR}/MakeDialog.moc
+    ${CMAKE_CURRENT_BINARY_DIR}/DetailsDialog.moc
     ${${PROJECT_NAME}_QM_FILES}
     ${${PROJECT_NAME}_ICNS})
 

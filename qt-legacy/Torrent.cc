@@ -88,6 +88,7 @@ Torrent::myProperties[] =
   { TRACKERS, TR_KEY_trackers, QVariant::StringList, STAT },
   { HOSTS, TR_KEY_NONE, QVariant::StringList, DERIVED },
   { LABELS, TR_KEY_labels, QVariant::StringList, STAT },
+  { TRACKER_LIST, TR_KEY_tracker_list_camel_APICOMPAT, QVariant::String, STAT_EXTRA },
   { TRACKERSTATS, TR_KEY_tracker_stats_camel_APICOMPAT, CustomVariantType::TrackerStatsList, STAT_EXTRA },
   { MIME_ICON, TR_KEY_NONE, QVariant::Icon, DERIVED },
   { SEED_RATIO_LIMIT, TR_KEY_seed_ratio_limit_camel_APICOMPAT, QVariant::Double, STAT },
