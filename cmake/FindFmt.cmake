@@ -1,3 +1,17 @@
+if(USE_SYSTEM_FMT)
+    find_package(fmt CONFIG REQUIRED)
+
+    set(${CMAKE_FIND_PACKAGE_NAME}_VERSION "${fmt_VERSION}")
+
+    target_compile_definitions(fmt::fmt-header-only
+        INTERFACE
+            $<IF:$<VERSION_GREATER_EQUAL:${${CMAKE_FIND_PACKAGE_NAME}_VERSION},11.2.0>,FMT_USE_EXCEPTIONS,FMT_EXCEPTIONS>=0
+            FMT_HEADER_ONLY=1)
+
+    set(${CMAKE_FIND_PACKAGE_NAME}_FOUND TRUE)
+    return()
+endif()
+
 add_library(fmt::fmt-header-only INTERFACE IMPORTED)
 
 set(${CMAKE_FIND_PACKAGE_NAME}_INCLUDE "${TR_THIRD_PARTY_SOURCE_DIR}/fmt/include")
